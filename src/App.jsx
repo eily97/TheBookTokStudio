@@ -92,6 +92,11 @@ export default function App() {
   const [trending, setTrending] = useState([]);
   const [trendingCovers, setTrendingCovers] = useState({});
   const [searchTimer, setSearchTimer] = useState(null);
+  const [showPWABanner, setShowPWABanner] = useState(() => {
+    const isStandalone = window.navigator.standalone === true;
+    const dismissed = localStorage.getItem("pwa_dismissed");
+    return !isStandalone && !dismissed;
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -307,7 +312,22 @@ export default function App() {
           <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>PageMind</span>
           <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
         </div>
-        <div style={s.body}>
+        {showPWABanner && (
+        <div style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>📱</span>
+            <div>
+              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>Add PageMind to your home screen</div>
+              <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>Safari → Share → Add to Home Screen</div>
+            </div>
+          </div>
+          <button onClick={() => { setShowPWABanner(false); localStorage.setItem("pwa_dismissed", "1"); }}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+            ✕
+          </button>
+        </div>
+      )}
+      <div style={s.body}>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
           {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
           {pendingSuggestions.map(sv => (
