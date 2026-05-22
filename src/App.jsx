@@ -16,32 +16,33 @@ const SB = {
 const hasNonLatin = (str) => /[^\u0000-\u024F\u1E00-\u1EFF]/.test(str);
 
 const searchBooks = async (q) => {
-  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=40&fields=title,author_name,cover_i,key,edition_count,first_publish_year,language&lang=eng`);
-  const d = await r.json();
+  // author: ile yazar araması + title araması birleştir
+  const [r1, r2] = await Promise.all([
+    fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
+    fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
+  ]);
+  const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+  const all = [...(d1.docs || []), ...(d2.docs || [])];
   const seen = new Set();
-  return (d.docs || [])
-    .filter(b => {
-      const title = b.title?.trim();
-      const author = b.author_name?.[0]?.trim();
-      if (!title || !author) return false;
-      if (hasNonLatin(title) || hasNonLatin(author)) return false;
-      const key = title.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 7)
-    .map(b => ({
-      title: b.title,
-      author: b.author_name[0],
-      cover: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
-      year: b.first_publish_year || "",
-      olKey: b.key || "",
-    }));
+  return all.filter(b => {
+    const title = b.title?.trim();
+    const author = b.author_name?.[0]?.trim();
+    if (!title || !author) return false;
+    if (hasNonLatin(title) || hasNonLatin(author)) return false;
+    const key = title.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 7).map(b => ({
+    title: b.title,
+    author: b.author_name[0],
+    cover: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+    year: b.first_publish_year || "",
+    olKey: b.key || "",
+  }));
 };
 
 const fetchBookDescription = async (title, author) => {
-  // Önce Open Library dene
   try {
     const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title + " " + author)}&limit=1&fields=key`);
     const d = await r.json();
@@ -63,6 +64,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [book, setBook] = useState(null);
   const [bookDesc, setBookDesc] = useState(null);
+  const [bookDescExpanded, setBookDescExpanded] = useState(false);
   const [bookTotalComments, setBookTotalComments] = useState(0);
   const [chapter, setChapter] = useState(null);
   const [chapterNames, setChapterNames] = useState({});
@@ -134,7 +136,7 @@ export default function App() {
       try { setSearchResults(await searchBooks(q)); }
       catch { setSearchResults([]); }
       setSearching(false);
-    }, 400);
+    }, 500);
     setSearchTimer(t);
   };
 
@@ -267,14 +269,13 @@ export default function App() {
   };
 
   const goBook = async (b) => {
-    setBook(b); setChapterNames({}); setChapterCounts({}); setBookDesc(null); setBookTotalComments(0);
+    setBook(b); setChapterNames({}); setChapterCounts({}); setBookDesc(null); setBookDescExpanded(false); setBookTotalComments(0);
     fetchChapterNames(b.title);
     fetchChapterCounts(b.title);
     fetchBookDescription(b.title, b.author).then(desc => setBookDesc(desc));
     setPage("book");
   };
 
-  // Most active chapters
   const topChapters = Object.entries(chapterCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   const s = {
@@ -387,12 +388,25 @@ export default function App() {
     </div>
   );
 
+  const BookCard = ({ b, onClick }) => (
+    <div style={s.bookCard}
+      onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+      onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
+      onClick={onClick}>
+      {b.cover ? <img src={b.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+        : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
+        <div style={s.muted}>{b.author}{b.year ? ` · ${b.year}` : ""}</div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
       <Header />
       <div style={s.body}>
 
-        {/* HOME */}
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
@@ -407,19 +421,7 @@ export default function App() {
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
           <div style={{ marginTop: 12 }}>
             {searching && <div style={{ ...s.muted, padding: "12px 0" }}>Searching...</div>}
-            {searchResults.map((b, i) => (
-              <div key={i} style={s.bookCard}
-                onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
-                onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                onClick={() => goBook(b)}>
-                {b.cover ? <img src={b.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
-                  : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
-                  <div style={s.muted}>{b.author}{b.year ? ` · ${b.year}` : ""}</div>
-                </div>
-              </div>
-            ))}
+            {searchResults.map((b, i) => <BookCard key={i} b={b} onClick={() => goBook(b)} />)}
             {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
           {trending.length > 0 && search.length < 2 && (
@@ -427,11 +429,12 @@ export default function App() {
               <div style={s.label}>🔥 Trending this week</div>
               {trending.map(([title, count]) => {
                 const info = trendingCovers[title];
+                const b = { title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" };
                 return (
                   <div key={title} style={s.bookCard}
                     onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                     onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                    onClick={() => goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" })}>
+                    onClick={() => goBook(b)}>
                     {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                       : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                     <div style={{ flex: 1 }}>
@@ -446,11 +449,8 @@ export default function App() {
           )}
         </>}
 
-        {/* BOOK DETAIL */}
         {page === "book" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
-
-          {/* Hero */}
           <div style={{ display: "flex", gap: 20, marginBottom: 28 }}>
             {book?.cover
               ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
@@ -461,31 +461,25 @@ export default function App() {
               {book?.year && <div style={s.muted}>{book.year}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                 {bookTotalComments > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {bookTotalComments} comments</span>}
-                {topChapters.length > 0 && <span style={{ ...s.tag }}>Most active: Ch. {topChapters[0][0]}</span>}
+                {topChapters.length > 0 && <span style={s.tag}>Most active: Ch. {topChapters[0][0]}</span>}
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          {bookDesc && (() => {
-            const short = bookDesc.length > 280;
-            const [expanded, setExpanded] = useState(false);
-            return (
-              <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
-                <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>
-                  {short && !expanded ? bookDesc.slice(0, 280) + "..." : bookDesc}
-                </div>
-                {short && (
-                  <button onClick={() => setExpanded(!expanded)} style={{ background: "none", border: "none", color: "#4f46e5", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 0 0", display: "block" }}>
-                    {expanded ? "Show less" : "Read more"}
-                  </button>
-                )}
+          {bookDesc && (
+            <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
+              <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>
+                {bookDesc.length > 280 && !bookDescExpanded ? bookDesc.slice(0, 280) + "..." : bookDesc}
               </div>
-            );
-          })()}
+              {bookDesc.length > 280 && (
+                <button onClick={() => setBookDescExpanded(!bookDescExpanded)} style={{ background: "none", border: "none", color: "#4f46e5", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 0 0", display: "block" }}>
+                  {bookDescExpanded ? "Show less" : "Read more"}
+                </button>
+              )}
+            </div>
+          )}
 
-          {/* Most active chapters */}
           {topChapters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <div style={s.label}>Most discussed chapters</div>
@@ -503,7 +497,6 @@ export default function App() {
             </div>
           )}
 
-          {/* All chapters */}
           <div style={s.label}>All chapters</div>
           {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
@@ -535,7 +528,6 @@ export default function App() {
           ))}
         </>}
 
-        {/* COMMENTS */}
         {page === "comments" && <>
           <button style={s.back} onClick={() => setPage("book")}>← Back</button>
           <div style={{ marginBottom: 24 }}>
