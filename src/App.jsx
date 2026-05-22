@@ -49,7 +49,7 @@ const fetchBookDescription = async (olKey) => {
     const desc = d.description;
     if (!desc) return null;
     const text = typeof desc === "string" ? desc : desc.value || null;
-    return text ? text.slice(0, 300) + (text.length > 300 ? "..." : "") : null;
+    return text || null;
   } catch { return null; }
 };
 
@@ -463,12 +463,23 @@ export default function App() {
           </div>
 
           {/* Description */}
-          {bookDesc && (
-            <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
-              <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>{bookDesc}</div>
-            </div>
-          )}
+          {bookDesc && (() => {
+            const short = bookDesc.length > 280;
+            const [expanded, setExpanded] = useState(false);
+            return (
+              <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
+                <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>
+                  {short && !expanded ? bookDesc.slice(0, 280) + "..." : bookDesc}
+                </div>
+                {short && (
+                  <button onClick={() => setExpanded(!expanded)} style={{ background: "none", border: "none", color: "#4f46e5", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 0 0", display: "block" }}>
+                    {expanded ? "Show less" : "Read more"}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Most active chapters */}
           {topChapters.length > 0 && (
