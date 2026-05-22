@@ -309,7 +309,7 @@ export default function App() {
     return (
       <div style={s.wrap}>
         <div style={s.header}>
-          <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>PageMind</span>
+          <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>ThatPart</span>
           <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
         </div>
         {showPWABanner && (
@@ -349,7 +349,7 @@ export default function App() {
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <span style={s.logo} onClick={() => setPage("home")}><span style={s.dot}></span>PageMind</span>
+        <span style={s.logo} onClick={() => setPage("home")}><span style={s.dot}></span>ThatPart</span>
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
       </div>
       <div style={s.body}>
@@ -388,7 +388,7 @@ export default function App() {
   const Header = () => (
     <div style={s.header}>
       <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
-        <span style={s.dot}></span>PageMind
+        <span style={s.dot}></span>ThatPart
       </span>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
         {user ? (
