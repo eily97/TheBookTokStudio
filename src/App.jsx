@@ -3,6 +3,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = "https://fycpjuwufasvccezfuis.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
+const ADMIN_EMAIL = "yarenpekgil97@gmail.com";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const SB = {
@@ -65,8 +66,6 @@ export default function App() {
   const [suggestText, setSuggestText] = useState("");
   const [suggestSent, setSuggestSent] = useState({});
   const [adminPage, setAdminPage] = useState(false);
-  const [adminPass, setAdminPass] = useState("");
-  const [adminAuthed, setAdminAuthed] = useState(false);
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
   const [myComments, setMyComments] = useState([]);
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
@@ -87,6 +86,7 @@ export default function App() {
   const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); };
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const fetchTrending = async () => {
     try {
@@ -369,7 +369,7 @@ export default function App() {
           ) : (
             <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
           )}
-          <button onClick={() => setAdminPage(true)} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>
+          {isAdmin && <button onClick={() => setAdminPage(true)} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
         </div>
       </div>
 
