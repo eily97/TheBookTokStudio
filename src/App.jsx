@@ -12,6 +12,26 @@ const SB = {
   Prefer: "return=representation",
 };
 
+const searchGoogleBooks = async (q) => {
+  const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&langRestrict=en&maxResults=8&orderBy=relevance&printType=books`);
+  const d = await r.json();
+  const seen = new Set();
+  return (d.items || []).filter(item => {
+    const info = item.volumeInfo;
+    const title = info.title?.toLowerCase().trim();
+    if (!title || seen.has(title)) return false;
+    if (!info.authors?.length) return false;
+    seen.add(title);
+    return true;
+  }).map(item => ({
+    title: item.volumeInfo.title,
+    author: item.volumeInfo.authors?.[0] || "",
+    cover: item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") || null,
+    year: item.volumeInfo.publishedDate?.slice(0, 4) || "",
+    id: item.id,
+  }));
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -44,6 +64,7 @@ export default function App() {
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
   const [trending, setTrending] = useState([]);
   const [trendingCovers, setTrendingCovers] = useState({});
+  const [searchTimer, setSearchTimer] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -70,44 +91,27 @@ export default function App() {
       setTrending(sorted);
       sorted.forEach(async ([title]) => {
         try {
-          const r2 = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=1&fields=cover_i,author_name`);
-          const d2 = await r2.json();
-          const doc = d2.docs?.[0];
-          if (doc?.cover_i) setTrendingCovers(prev => ({ ...prev, [title]: { cover: doc.cover_i, author: doc.author_name?.[0] } }));
+          const results = await searchGoogleBooks(title);
+          const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
+          if (match) setTrendingCovers(prev => ({ ...prev, [title]: { cover: match.cover, author: match.author } }));
         } catch {}
       });
     } catch {}
   };
 
-  const fetchChapterCounts = async (bookTitle) => {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(bookTitle)}&select=chapter`, { headers: SB });
-      const d = await r.json();
-      const counts = {};
-      (Array.isArray(d) ? d : []).forEach(c => { counts[c.chapter] = (counts[c.chapter] || 0) + 1; });
-      setChapterCounts(counts);
-    } catch { setChapterCounts({}); }
-  };
-
-  const searchBooks = async (q) => {
+  const handleSearch = (q) => {
     setSearch(q);
+    if (searchTimer) clearTimeout(searchTimer);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
-    try {
-      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&lang=eng&limit=30&fields=title,author_name,cover_i,key,edition_count,first_publish_year,language`);
-      const d = await r.json();
-      const seen = new Set();
-      const filtered = (d.docs || []).filter(b => {
-        const key = b.title?.toLowerCase().trim();
-        if (!key || seen.has(key)) return false;
-        if (!b.language?.includes("eng")) return false;
-        if ((b.edition_count || 0) < 2) return false;
-        seen.add(key);
-        return true;
-      }).slice(0, 6);
-      setSearchResults(filtered);
-    } catch { setSearchResults([]); }
-    setSearching(false);
+    const t = setTimeout(async () => {
+      try {
+        const results = await searchGoogleBooks(q);
+        setSearchResults(results);
+      } catch { setSearchResults([]); }
+      setSearching(false);
+    }, 400);
+    setSearchTimer(t);
   };
 
   const fetchChapterNames = async (bookTitle) => {
@@ -118,6 +122,16 @@ export default function App() {
       (Array.isArray(d) ? d : []).forEach(c => { map[c.chapter] = c.name; });
       setChapterNames(map);
     } catch { setChapterNames({}); }
+  };
+
+  const fetchChapterCounts = async (bookTitle) => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(bookTitle)}&select=chapter`, { headers: SB });
+      const d = await r.json();
+      const counts = {};
+      (Array.isArray(d) ? d : []).forEach(c => { counts[c.chapter] = (counts[c.chapter] || 0) + 1; });
+      setChapterCounts(counts);
+    } catch { setChapterCounts({}); }
   };
 
   const fetchComments = async (b, ch) => {
@@ -200,14 +214,14 @@ export default function App() {
     setPendingSuggestions(Array.isArray(d) ? d : []);
   };
 
-  const approve = async (s) => {
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(s.book)}&chapter=eq.${s.chapter}&status=eq.approved`, { method: "DELETE", headers: SB });
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "approved" }) });
+  const approve = async (sv) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(sv.book)}&chapter=eq.${sv.chapter}&status=eq.approved`, { method: "DELETE", headers: SB });
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${sv.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "approved" }) });
     fetchPending();
   };
 
-  const reject = async (s) => {
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "rejected" }) });
+  const reject = async (sv) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${sv.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "rejected" }) });
     fetchPending();
   };
 
@@ -227,19 +241,11 @@ export default function App() {
   };
 
   const goBook = (b) => {
-    setBook(b);
+    setBook(b); setChapterNames({}); setChapterCounts({});
     fetchChapterNames(b.title);
     fetchChapterCounts(b.title);
     setPage("chapters");
   };
-
-  const goTrendingBook = (title) => {
-    const info = trendingCovers[title];
-    const fakeBook = { title, author_name: info?.author ? [info.author] : [], cover_i: info?.cover || null };
-    goBook(fakeBook);
-  };
-
-  const coverUrl = (b) => b?.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null;
 
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
@@ -279,14 +285,14 @@ export default function App() {
           <>
             <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
             {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
-            {pendingSuggestions.map(s2 => (
-              <div key={s2.id} style={s.card}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{s2.book} · Chapter {s2.chapter}</div>
-                <div style={{ fontSize: 15, marginBottom: 4 }}>"{s2.name}"</div>
-                <div style={{ ...s.muted, marginBottom: 12 }}>by @{s2.suggested_by}</div>
+            {pendingSuggestions.map(sv => (
+              <div key={sv.id} style={s.card}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{sv.book} · Chapter {sv.chapter}</div>
+                <div style={{ fontSize: 15, marginBottom: 4 }}>"{sv.name}"</div>
+                <div style={{ ...s.muted, marginBottom: 12 }}>by @{sv.suggested_by}</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button style={s.btn("#4f46e5")} onClick={() => approve(s2)}>✓ Approve</button>
-                  <button style={s.btn("#fee2e2", "#b91c1c")} onClick={() => reject(s2)}>✕ Reject</button>
+                  <button style={s.btn("#4f46e5")} onClick={() => approve(sv)}>✓ Approve</button>
+                  <button style={s.btn("#fee2e2", "#b91c1c")} onClick={() => reject(sv)}>✕ Reject</button>
                 </div>
               </div>
             ))}
@@ -371,7 +377,7 @@ export default function App() {
               <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in</button>
             </div>
           )}
-          <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => searchBooks(e.target.value)} />
+          <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
           <div style={{ marginTop: 12 }}>
             {searching && <div style={{ ...s.muted, padding: "12px 0" }}>Searching...</div>}
             {searchResults.map((b, i) => (
@@ -379,11 +385,11 @@ export default function App() {
                 onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
                 onClick={() => goBook(b)}>
-                {coverUrl(b) ? <img src={coverUrl(b)} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                {b.cover ? <img src={b.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                   : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
-                  <div style={s.muted}>{b.author_name?.[0]}{b.first_publish_year ? ` · ${b.first_publish_year}` : ""}</div>
+                  <div style={s.muted}>{b.author}{b.year ? ` · ${b.year}` : ""}</div>
                 </div>
               </div>
             ))}
@@ -399,9 +405,8 @@ export default function App() {
                   <div key={title} style={s.bookCard}
                     onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                     onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                    onClick={() => goTrendingBook(title)}>
-                    {info?.cover
-                      ? <img src={`https://covers.openlibrary.org/b/id/${info.cover}-M.jpg`} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                    onClick={() => goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "" })}>
+                    {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                       : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{title}</div>
@@ -418,10 +423,10 @@ export default function App() {
         {page === "chapters" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 32 }}>
-            {coverUrl(book) && <img src={coverUrl(book)} alt="" style={{ width: 64, height: 90, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />}
+            {book?.cover && <img src={book.cover} alt="" style={{ width: 64, height: 90, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />}
             <div>
               <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 4 }}>{book?.title}</div>
-              <div style={s.muted}>{book?.author_name?.[0]}{book?.first_publish_year ? ` · ${book.first_publish_year}` : ""}</div>
+              <div style={s.muted}>{book?.author}{book?.year ? ` · ${book.year}` : ""}</div>
             </div>
           </div>
           <div style={s.label}>Which chapter did you read?</div>
@@ -434,9 +439,7 @@ export default function App() {
                 <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
                 <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>{chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  {chapterCounts[ch] > 0 && (
-                    <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {chapterCounts[ch]}</span>
-                  )}
+                  {chapterCounts[ch] > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {chapterCounts[ch]}</span>}
                   {user && !chapterNames[ch] && !suggestSent[ch] && (
                     <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
                       style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer" }}>+ Name</button>
