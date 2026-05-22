@@ -19,6 +19,7 @@ export default function App() {
   const [book, setBook] = useState(null);
   const [chapter, setChapter] = useState(null);
   const [chapterNames, setChapterNames] = useState({});
+  const [chapterCounts, setChapterCounts] = useState({});
   const [comments, setComments] = useState([]);
   const [replies, setReplies] = useState({});
   const [text, setText] = useState("");
@@ -67,18 +68,25 @@ export default function App() {
       d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
       const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
       setTrending(sorted);
-      // Fetch covers from Open Library
       sorted.forEach(async ([title]) => {
         try {
           const r2 = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=1&fields=cover_i,author_name`);
           const d2 = await r2.json();
           const doc = d2.docs?.[0];
-          if (doc?.cover_i) {
-            setTrendingCovers(prev => ({ ...prev, [title]: { cover: doc.cover_i, author: doc.author_name?.[0] } }));
-          }
+          if (doc?.cover_i) setTrendingCovers(prev => ({ ...prev, [title]: { cover: doc.cover_i, author: doc.author_name?.[0] } }));
         } catch {}
       });
     } catch {}
+  };
+
+  const fetchChapterCounts = async (bookTitle) => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(bookTitle)}&select=chapter`, { headers: SB });
+      const d = await r.json();
+      const counts = {};
+      (Array.isArray(d) ? d : []).forEach(c => { counts[c.chapter] = (counts[c.chapter] || 0) + 1; });
+      setChapterCounts(counts);
+    } catch { setChapterCounts({}); }
   };
 
   const searchBooks = async (q) => {
@@ -152,12 +160,13 @@ export default function App() {
     });
     setText(""); setSpoiler(false);
     fetchComments(book, chapter);
+    fetchChapterCounts(book.title);
   };
 
   const deleteComment = async (id, fromProfile = false) => {
     if (!confirm("Delete this comment?")) return;
     await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${id}`, { method: "DELETE", headers: SB });
-    if (fromProfile) fetchMyComments(); else fetchComments(book, chapter);
+    if (fromProfile) fetchMyComments(); else { fetchComments(book, chapter); fetchChapterCounts(book.title); }
   };
 
   const like = async (c) => {
@@ -187,7 +196,8 @@ export default function App() {
 
   const fetchPending = async () => {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
-    setPendingSuggestions(Array.isArray(await r.json()) ? await r.json() : []);
+    const d = await r.json();
+    setPendingSuggestions(Array.isArray(d) ? d : []);
   };
 
   const approve = async (s) => {
@@ -216,12 +226,17 @@ export default function App() {
     setAiLoading(false);
   };
 
-  const goTrendingBook = async (title) => {
+  const goBook = (b) => {
+    setBook(b);
+    fetchChapterNames(b.title);
+    fetchChapterCounts(b.title);
+    setPage("chapters");
+  };
+
+  const goTrendingBook = (title) => {
     const info = trendingCovers[title];
     const fakeBook = { title, author_name: info?.author ? [info.author] : [], cover_i: info?.cover || null };
-    setBook(fakeBook);
-    fetchChapterNames(title);
-    setPage("chapters");
+    goBook(fakeBook);
   };
 
   const coverUrl = (b) => b?.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null;
@@ -363,7 +378,7 @@ export default function App() {
               <div key={i} style={s.bookCard}
                 onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                onClick={() => { setBook(b); fetchChapterNames(b.title); setPage("chapters"); }}>
+                onClick={() => goBook(b)}>
                 {coverUrl(b) ? <img src={coverUrl(b)} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                   : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                 <div>
@@ -375,7 +390,6 @@ export default function App() {
             {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
 
-          {/* Trending */}
           {trending.length > 0 && search.length < 2 && (
             <div style={{ marginTop: 36 }}>
               <div style={s.label}>🔥 Trending This Week</div>
@@ -419,11 +433,16 @@ export default function App() {
                 onClick={() => { setChapter(ch); setAiText(""); fetchComments(book, ch); setPage("comments"); }}>
                 <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
                 <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>{chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}</span>
-                {user && !chapterNames[ch] && !suggestSent[ch] && (
-                  <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
-                    style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer", flexShrink: 0 }}>+ Name</button>
-                )}
-                {suggestSent[ch] && <span style={{ fontSize: 11, color: "#4f46e5" }}>Sent ✓</span>}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {chapterCounts[ch] > 0 && (
+                    <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {chapterCounts[ch]}</span>
+                  )}
+                  {user && !chapterNames[ch] && !suggestSent[ch] && (
+                    <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
+                      style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer" }}>+ Name</button>
+                  )}
+                  {suggestSent[ch] && <span style={{ fontSize: 11, color: "#4f46e5" }}>Sent ✓</span>}
+                </div>
               </div>
               {suggestChapter === ch && (
                 <div style={{ ...s.card, marginTop: -4, marginBottom: 8 }}>
