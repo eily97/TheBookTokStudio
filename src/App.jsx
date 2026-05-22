@@ -13,7 +13,6 @@ const SB = {
   Prefer: "return=representation",
 };
 
-// Kiril ve Arap alfabesi karakterlerini tespit et
 const hasNonLatin = (str) => /[^\u0000-\u024F\u1E00-\u1EFF]/.test(str);
 
 const searchBooks = async (q) => {
@@ -38,7 +37,20 @@ const searchBooks = async (q) => {
       author: b.author_name[0],
       cover: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
       year: b.first_publish_year || "",
+      olKey: b.key || "",
     }));
+};
+
+const fetchBookDescription = async (olKey) => {
+  if (!olKey) return null;
+  try {
+    const r = await fetch(`https://openlibrary.org${olKey}.json`);
+    const d = await r.json();
+    const desc = d.description;
+    if (!desc) return null;
+    const text = typeof desc === "string" ? desc : desc.value || null;
+    return text ? text.slice(0, 300) + (text.length > 300 ? "..." : "") : null;
+  } catch { return null; }
 };
 
 export default function App() {
@@ -46,6 +58,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("home");
   const [book, setBook] = useState(null);
+  const [bookDesc, setBookDesc] = useState(null);
+  const [bookTotalComments, setBookTotalComments] = useState(0);
   const [chapter, setChapter] = useState(null);
   const [chapterNames, setChapterNames] = useState({});
   const [chapterCounts, setChapterCounts] = useState({});
@@ -113,10 +127,8 @@ export default function App() {
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     const t = setTimeout(async () => {
-      try {
-        const results = await searchBooks(q);
-        setSearchResults(results);
-      } catch { setSearchResults([]); }
+      try { setSearchResults(await searchBooks(q)); }
+      catch { setSearchResults([]); }
       setSearching(false);
     }, 400);
     setSearchTimer(t);
@@ -137,9 +149,11 @@ export default function App() {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(bookTitle)}&select=chapter`, { headers: SB });
       const d = await r.json();
       const counts = {};
-      (Array.isArray(d) ? d : []).forEach(c => { counts[c.chapter] = (counts[c.chapter] || 0) + 1; });
+      let total = 0;
+      (Array.isArray(d) ? d : []).forEach(c => { counts[c.chapter] = (counts[c.chapter] || 0) + 1; total++; });
       setChapterCounts(counts);
-    } catch { setChapterCounts({}); }
+      setBookTotalComments(total);
+    } catch { setChapterCounts({}); setBookTotalComments(0); }
   };
 
   const fetchComments = async (b, ch) => {
@@ -248,12 +262,16 @@ export default function App() {
     setAiLoading(false);
   };
 
-  const goBook = (b) => {
-    setBook(b); setChapterNames({}); setChapterCounts({});
+  const goBook = async (b) => {
+    setBook(b); setChapterNames({}); setChapterCounts({}); setBookDesc(null); setBookTotalComments(0);
     fetchChapterNames(b.title);
     fetchChapterCounts(b.title);
-    setPage("chapters");
+    if (b.olKey) fetchBookDescription(b.olKey).then(desc => setBookDesc(desc));
+    setPage("book");
   };
+
+  // Most active chapters
+  const topChapters = Object.entries(chapterCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
@@ -269,7 +287,6 @@ export default function App() {
     back: { background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", gap: 6, padding: 0 },
     tag: { background: "#f0f0ff", color: "#4f46e5", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 },
     muted: { color: "#888", fontSize: 13 },
-    // uppercase kaldırıldı, büyük harf sorunu düzeltildi
     label: { fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 10 },
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
     iconBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 6 },
@@ -343,31 +360,35 @@ export default function App() {
     </div>
   );
 
+  const Header = () => (
+    <div style={s.header}>
+      <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
+        <span style={s.dot}></span>PageMind
+      </span>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        {user ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
+              {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+                : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+            </div>
+            <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
+          </>
+        ) : (
+          <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
+        )}
+        {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
-      <div style={s.header}>
-        <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
-          <span style={s.dot}></span>PageMind
-        </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          {user ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
-                {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-                  : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-              </div>
-              <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
-            </>
-          ) : (
-            <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
-          )}
-          {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
-        </div>
-      </div>
-
+      <Header />
       <div style={s.body}>
 
+        {/* HOME */}
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
@@ -397,7 +418,6 @@ export default function App() {
             ))}
             {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
-
           {trending.length > 0 && search.length < 2 && (
             <div style={{ marginTop: 36 }}>
               <div style={s.label}>🔥 Trending this week</div>
@@ -407,7 +427,7 @@ export default function App() {
                   <div key={title} style={s.bookCard}
                     onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                     onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                    onClick={() => goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "" })}>
+                    onClick={() => goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" })}>
                     {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                       : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                     <div style={{ flex: 1 }}>
@@ -422,16 +442,54 @@ export default function App() {
           )}
         </>}
 
-        {page === "chapters" && <>
+        {/* BOOK DETAIL */}
+        {page === "book" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 32 }}>
-            {book?.cover && <img src={book.cover} alt="" style={{ width: 64, height: 90, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />}
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 4 }}>{book?.title}</div>
-              <div style={s.muted}>{book?.author}{book?.year ? ` · ${book.year}` : ""}</div>
+
+          {/* Hero */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 28 }}>
+            {book?.cover
+              ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
+              : <div style={{ width: 90, height: 130, borderRadius: 10, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>📚</div>}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 6, lineHeight: 1.2 }}>{book?.title}</div>
+              <div style={{ fontSize: 15, color: "#555", marginBottom: 4 }}>{book?.author}</div>
+              {book?.year && <div style={s.muted}>{book.year}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                {bookTotalComments > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {bookTotalComments} comments</span>}
+                {topChapters.length > 0 && <span style={{ ...s.tag }}>Most active: Ch. {topChapters[0][0]}</span>}
+              </div>
             </div>
           </div>
-          <div style={s.label}>Which chapter did you read?</div>
+
+          {/* Description */}
+          {bookDesc && (
+            <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
+              <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>{bookDesc}</div>
+            </div>
+          )}
+
+          {/* Most active chapters */}
+          {topChapters.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={s.label}>Most discussed chapters</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {topChapters.map(([ch, count]) => (
+                  <div key={ch} onClick={() => { setChapter(+ch); setAiText(""); fetchComments(book, +ch); setPage("comments"); }}
+                    style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+                    onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}>
+                    <span style={{ fontWeight: 700, fontSize: 15 }}>Ch. {ch}</span>
+                    <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All chapters */}
+          <div style={s.label}>All chapters</div>
           {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
               <div style={s.chRow}
@@ -462,8 +520,9 @@ export default function App() {
           ))}
         </>}
 
+        {/* COMMENTS */}
         {page === "comments" && <>
-          <button style={s.back} onClick={() => setPage("chapters")}>← Back</button>
+          <button style={s.back} onClick={() => setPage("book")}>← Back</button>
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
             <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
