@@ -12,24 +12,32 @@ const SB = {
   Prefer: "return=representation",
 };
 
-const searchGoogleBooks = async (q) => {
-  const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&langRestrict=en&maxResults=8&orderBy=relevance&printType=books`);
+// Kiril ve Arap alfabesi karakterlerini tespit et
+const hasNonLatin = (str) => /[^\u0000-\u024F\u1E00-\u1EFF]/.test(str);
+
+const searchBooks = async (q) => {
+  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=40&fields=title,author_name,cover_i,key,edition_count,first_publish_year,language&lang=eng`);
   const d = await r.json();
   const seen = new Set();
-  return (d.items || []).filter(item => {
-    const info = item.volumeInfo;
-    const title = info.title?.toLowerCase().trim();
-    if (!title || seen.has(title)) return false;
-    if (!info.authors?.length) return false;
-    seen.add(title);
-    return true;
-  }).map(item => ({
-    title: item.volumeInfo.title,
-    author: item.volumeInfo.authors?.[0] || "",
-    cover: item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") || null,
-    year: item.volumeInfo.publishedDate?.slice(0, 4) || "",
-    id: item.id,
-  }));
+  return (d.docs || [])
+    .filter(b => {
+      const title = b.title?.trim();
+      const author = b.author_name?.[0]?.trim();
+      if (!title || !author) return false;
+      if (hasNonLatin(title) || hasNonLatin(author)) return false;
+      if ((b.edition_count || 0) < 3) return false;
+      const key = title.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 7)
+    .map(b => ({
+      title: b.title,
+      author: b.author_name[0],
+      cover: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+      year: b.first_publish_year || "",
+    }));
 };
 
 export default function App() {
@@ -91,7 +99,7 @@ export default function App() {
       setTrending(sorted);
       sorted.forEach(async ([title]) => {
         try {
-          const results = await searchGoogleBooks(title);
+          const results = await searchBooks(title);
           const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
           if (match) setTrendingCovers(prev => ({ ...prev, [title]: { cover: match.cover, author: match.author } }));
         } catch {}
@@ -106,7 +114,7 @@ export default function App() {
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        const results = await searchGoogleBooks(q);
+        const results = await searchBooks(q);
         setSearchResults(results);
       } catch { setSearchResults([]); }
       setSearching(false);
@@ -261,7 +269,8 @@ export default function App() {
     back: { background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", gap: 6, padding: 0 },
     tag: { background: "#f0f0ff", color: "#4f46e5", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 },
     muted: { color: "#888", fontSize: 13 },
-    label: { fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+    // uppercase kaldırıldı, büyük harf sorunu düzeltildi
+    label: { fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 10 },
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
     iconBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 6 },
   };
@@ -398,7 +407,7 @@ export default function App() {
 
           {trending.length > 0 && search.length < 2 && (
             <div style={{ marginTop: 36 }}>
-              <div style={s.label}>🔥 Trending This Week</div>
+              <div style={s.label}>🔥 Trending this week</div>
               {trending.map(([title, count]) => {
                 const info = trendingCovers[title];
                 return (
@@ -471,7 +480,7 @@ export default function App() {
           </button>
           {aiText && (
             <div style={{ ...s.card, borderColor: "#e0e0ff", marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>AI Summary</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>AI Summary</div>
               <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
             </div>
           )}
