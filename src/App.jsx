@@ -25,7 +25,6 @@ const searchBooks = async (q) => {
       const author = b.author_name?.[0]?.trim();
       if (!title || !author) return false;
       if (hasNonLatin(title) || hasNonLatin(author)) return false;
-      if ((b.edition_count || 0) < 3) return false;
       const key = title.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
@@ -41,16 +40,21 @@ const searchBooks = async (q) => {
     }));
 };
 
-const fetchBookDescription = async (olKey) => {
-  if (!olKey) return null;
+const fetchBookDescription = async (title, author) => {
+  // Önce Open Library dene
   try {
-    const r = await fetch(`https://openlibrary.org${olKey}.json`);
+    const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title + " " + author)}&limit=1&fields=key`);
     const d = await r.json();
-    const desc = d.description;
-    if (!desc) return null;
-    const text = typeof desc === "string" ? desc : desc.value || null;
-    return text || null;
-  } catch { return null; }
+    const key = d.docs?.[0]?.key;
+    if (key) {
+      const r2 = await fetch(`https://openlibrary.org${key}.json`);
+      const d2 = await r2.json();
+      const desc = d2.description;
+      const text = typeof desc === "string" ? desc : desc?.value || null;
+      if (text && text.length > 30) return text;
+    }
+  } catch {}
+  return null;
 };
 
 export default function App() {
@@ -266,7 +270,7 @@ export default function App() {
     setBook(b); setChapterNames({}); setChapterCounts({}); setBookDesc(null); setBookTotalComments(0);
     fetchChapterNames(b.title);
     fetchChapterCounts(b.title);
-    if (b.olKey) fetchBookDescription(b.olKey).then(desc => setBookDesc(desc));
+    fetchBookDescription(b.title, b.author).then(desc => setBookDesc(desc));
     setPage("book");
   };
 
