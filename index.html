@@ -2,14 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <title>PageMind — Share what you felt, chapter by chapter</title>
     <meta name="description" content="PageMind is a community for readers to share their thoughts and feelings chapter by chapter. Find your book, pick a chapter, and connect with other readers." />
     <meta name="keywords" content="book comments, reading community, chapter by chapter, book club, reader thoughts, book reviews" />
     <meta name="author" content="PageMind" />
-<meta name="google-site-verification" content="1ZqOyLFHAXsxcabXuuqq280NaLst4yAlRYvPlcpiCT0" />
-    <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
+    <meta name="google-site-verification" content="1ZqOyLFHAXsxcabXuuqq280NaLst4yAlRYvPlcpiCT0" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PageMind" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="PageMind — Share what you felt, chapter by chapter" />
     <meta property="og:description" content="A community for readers to share their thoughts and feelings chapter by chapter." />
     <meta property="og:type" content="website" />
@@ -22,11 +31,17 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f46e5'/><text y='.9em' font-size='65' x='15'>📖</text></svg>" />
 
-    <!-- Google Fonts -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      * { -webkit-tap-highlight-color: transparent; }
+      body { margin: 0; overscroll-behavior: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
