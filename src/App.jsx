@@ -41,6 +41,8 @@ export default function App() {
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
   const [myComments, setMyComments] = useState([]);
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
+  const [trending, setTrending] = useState([]);
+  const [trendingCovers, setTrendingCovers] = useState({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -48,13 +50,36 @@ export default function App() {
       setAuthLoading(false);
     });
     supabase.auth.onAuthStateChange((_, session) => setUser(session?.user || null));
+    fetchTrending();
   }, []);
 
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
   const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); };
-
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
+
+  const fetchTrending = async () => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=200`, { headers: SB });
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+      const counts = {};
+      d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      setTrending(sorted);
+      // Fetch covers from Open Library
+      sorted.forEach(async ([title]) => {
+        try {
+          const r2 = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=1&fields=cover_i,author_name`);
+          const d2 = await r2.json();
+          const doc = d2.docs?.[0];
+          if (doc?.cover_i) {
+            setTrendingCovers(prev => ({ ...prev, [title]: { cover: doc.cover_i, author: doc.author_name?.[0] } }));
+          }
+        } catch {}
+      });
+    } catch {}
+  };
 
   const searchBooks = async (q) => {
     setSearch(q);
@@ -132,24 +157,17 @@ export default function App() {
   const deleteComment = async (id, fromProfile = false) => {
     if (!confirm("Delete this comment?")) return;
     await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${id}`, { method: "DELETE", headers: SB });
-    if (fromProfile) fetchMyComments();
-    else fetchComments(book, chapter);
+    if (fromProfile) fetchMyComments(); else fetchComments(book, chapter);
   };
 
   const like = async (c) => {
-    await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${c.id}`, {
-      method: "PATCH", headers: SB,
-      body: JSON.stringify({ likes: c.likes + 1 }),
-    });
+    await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${c.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ likes: c.likes + 1 }) });
     fetchComments(book, chapter);
   };
 
   const postReply = async (commentId) => {
     if (!replyText.trim() || !user) return;
-    await fetch(`${SUPABASE_URL}/rest/v1/replies`, {
-      method: "POST", headers: SB,
-      body: JSON.stringify({ comment_id: commentId, username, text: replyText.trim() }),
-    });
+    await fetch(`${SUPABASE_URL}/rest/v1/replies`, { method: "POST", headers: SB, body: JSON.stringify({ comment_id: commentId, username, text: replyText.trim() }) });
     setReplyText(""); setReplyTo(null);
     fetchComments(book, chapter);
   };
@@ -162,18 +180,14 @@ export default function App() {
 
   const submitSuggestion = async (ch) => {
     if (!suggestText.trim() || !user) return;
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, {
-      method: "POST", headers: SB,
-      body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }),
-    });
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, { method: "POST", headers: SB, body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }) });
     setSuggestSent(p => ({ ...p, [ch]: true }));
     setSuggestText(""); setSuggestChapter(null);
   };
 
   const fetchPending = async () => {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
-    const d = await r.json();
-    setPendingSuggestions(Array.isArray(d) ? d : []);
+    setPendingSuggestions(Array.isArray(await r.json()) ? await r.json() : []);
   };
 
   const approve = async (s) => {
@@ -195,14 +209,19 @@ export default function App() {
       ? `"${book.title}" Chapter ${chapter}${chTitle ? ` "${chTitle}"` : ""} reader comments:\n${cmts}\n\nWhat did readers feel? 2-3 sentences.`
       : `What do readers generally feel about Chapter ${chapter} of "${book.title}"? 2-3 sentences.`;
     try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
-      });
+      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }) });
       const d = await r.json();
       setAiText(d.content?.map(i => i.text || "").join("") || "Could not get summary.");
     } catch { setAiText("Connection error."); }
     setAiLoading(false);
+  };
+
+  const goTrendingBook = async (title) => {
+    const info = trendingCovers[title];
+    const fakeBook = { title, author_name: info?.author ? [info.author] : [], cover_i: info?.cover || null };
+    setBook(fakeBook);
+    fetchChapterNames(title);
+    setPage("chapters");
   };
 
   const coverUrl = (b) => b?.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null;
@@ -228,7 +247,6 @@ export default function App() {
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
-  // ADMIN
   if (adminPage) return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -239,12 +257,8 @@ export default function App() {
         {!adminAuthed ? (
           <>
             <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Admin Login</div>
-            <input type="password" style={{ ...s.input, marginBottom: 10 }} placeholder="Password"
-              value={adminPass} onChange={e => setAdminPass(e.target.value)} />
-            <button style={s.btnFull("#4f46e5")} onClick={() => {
-              if (adminPass === "pagemind2024") { setAdminAuthed(true); fetchPending(); }
-              else alert("Wrong password.");
-            }}>Login</button>
+            <input type="password" style={{ ...s.input, marginBottom: 10 }} placeholder="Password" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
+            <button style={s.btnFull("#4f46e5")} onClick={() => { if (adminPass === "pagemind2024") { setAdminAuthed(true); fetchPending(); } else alert("Wrong password."); }}>Login</button>
           </>
         ) : (
           <>
@@ -267,7 +281,6 @@ export default function App() {
     </div>
   );
 
-  // PROFILE
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -275,10 +288,8 @@ export default function App() {
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
       </div>
       <div style={s.body}>
-        {/* Profil başlık */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
-          {avatar
-            ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%" }} />
+          {avatar ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%" }} />
             : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>👤</div>}
           <div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{username}</div>
@@ -286,19 +297,13 @@ export default function App() {
             <div style={{ ...s.muted, marginTop: 4 }}>{myComments.length} comments</div>
           </div>
         </div>
-
         <div style={s.label}>My Comments</div>
         {myCommentsLoading && <div style={s.muted}>Loading...</div>}
-        {!myCommentsLoading && myComments.length === 0 && (
-          <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>
-        )}
+        {!myCommentsLoading && myComments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>}
         {myComments.map(c => (
           <div key={c.id} style={s.card}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <div>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span>
-                <span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span>
-              </div>
+              <div><span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span><span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span></div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
                 <button onClick={() => deleteComment(c.id, true)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
@@ -324,10 +329,8 @@ export default function App() {
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           {user ? (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
-                onClick={() => { setPage("profile"); fetchMyComments(); }}>
-                {avatar
-                  ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
+                {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
                   : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
               </div>
@@ -361,8 +364,7 @@ export default function App() {
                 onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
                 onClick={() => { setBook(b); fetchChapterNames(b.title); setPage("chapters"); }}>
-                {coverUrl(b)
-                  ? <img src={coverUrl(b)} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                {coverUrl(b) ? <img src={coverUrl(b)} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                   : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
@@ -372,6 +374,31 @@ export default function App() {
             ))}
             {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
+
+          {/* Trending */}
+          {trending.length > 0 && search.length < 2 && (
+            <div style={{ marginTop: 36 }}>
+              <div style={s.label}>🔥 Trending This Week</div>
+              {trending.map(([title, count]) => {
+                const info = trendingCovers[title];
+                return (
+                  <div key={title} style={s.bookCard}
+                    onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+                    onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
+                    onClick={() => goTrendingBook(title)}>
+                    {info?.cover
+                      ? <img src={`https://covers.openlibrary.org/b/id/${info.cover}-M.jpg`} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                      : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{title}</div>
+                      {info?.author && <div style={s.muted}>{info.author}</div>}
+                    </div>
+                    <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>}
 
         {page === "chapters" && <>
@@ -391,14 +418,10 @@ export default function App() {
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
                 onClick={() => { setChapter(ch); setAiText(""); fetchComments(book, ch); setPage("comments"); }}>
                 <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
-                <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>
-                  {chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}
-                </span>
+                <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>{chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}</span>
                 {user && !chapterNames[ch] && !suggestSent[ch] && (
                   <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
-                    style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer", flexShrink: 0 }}>
-                    + Name
-                  </button>
+                    style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer", flexShrink: 0 }}>+ Name</button>
                 )}
                 {suggestSent[ch] && <span style={{ fontSize: 11, color: "#4f46e5" }}>Sent ✓</span>}
               </div>
@@ -406,8 +429,7 @@ export default function App() {
                 <div style={{ ...s.card, marginTop: -4, marginBottom: 8 }}>
                   <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {ch}:</div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening"
-                      value={suggestText} onChange={e => setSuggestText(e.target.value)} />
+                    <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening" value={suggestText} onChange={e => setSuggestText(e.target.value)} />
                     <button style={s.btn("#4f46e5")} onClick={() => submitSuggestion(ch)}>Send</button>
                   </div>
                 </div>
@@ -422,7 +444,6 @@ export default function App() {
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
             <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
           </div>
-
           <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#f0f0ff", "#4f46e5")}>
             {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
           </button>
@@ -432,12 +453,10 @@ export default function App() {
               <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
             </div>
           )}
-
           {user ? (
             <div style={s.card}>
               <div style={s.label}>What did you feel?</div>
-              <textarea value={text} onChange={e => setText(e.target.value)}
-                placeholder="Share your thoughts while reading this chapter..."
+              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Share your thoughts while reading this chapter..."
                 style={{ ...s.input, resize: "none", minHeight: 80, marginBottom: 10 }} />
               <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
                 <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
@@ -450,42 +469,26 @@ export default function App() {
               <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
             </div>
           )}
-
           <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} comments`}</div>
-          {!loading && comments.length === 0 && (
-            <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>Be the first to share your thoughts 🌱</div>
-          )}
-
+          {!loading && comments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>Be the first to share your thoughts 🌱</div>}
           {comments.map(c => (
             <div key={c.id} style={s.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, fontSize: 13, color: "#4f46e5" }}>@{c.username}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
-                  {user && c.username === username && (
-                    <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
-                  )}
+                  {user && c.username === username && <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>}
                 </div>
               </div>
               {c.spoiler && !revealed[c.id]
-                ? <div onClick={() => setRevealed(r => ({ ...r, [c.id]: true }))}
-                    style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 14, cursor: "pointer", textAlign: "center" }}>
-                    ⚠️ Spoiler — click to reveal
-                  </div>
+                ? <div onClick={() => setRevealed(r => ({ ...r, [c.id]: true }))} style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 14, cursor: "pointer", textAlign: "center" }}>⚠️ Spoiler — click to reveal</div>
                 : <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
                     {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
                     {c.text}
                   </div>}
               <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-                <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>
-                  🤍 {c.likes} felt the same
-                </button>
-                {user && (
-                  <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
-                    style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>
-                    💬 Reply
-                  </button>
-                )}
+                <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>🤍 {c.likes} felt the same</button>
+                {user && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>💬 Reply</button>}
               </div>
               {(replies[c.id] || []).length > 0 && (
                 <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #f0f0ff" }}>
@@ -495,9 +498,7 @@ export default function App() {
                         <span style={{ fontWeight: 600, fontSize: 12, color: "#4f46e5" }}>@{r.username}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ ...s.muted, fontSize: 11 }}>{new Date(r.created_at).toLocaleDateString("en-US")}</span>
-                          {user && r.username === username && (
-                            <button onClick={() => deleteReply(r.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>
-                          )}
+                          {user && r.username === username && <button onClick={() => deleteReply(r.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>}
                         </div>
                       </div>
                       <div style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>{r.text}</div>
@@ -507,9 +508,7 @@ export default function App() {
               )}
               {replyTo === c.id && (
                 <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                  <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }}
-                    placeholder="Write a reply..."
-                    value={replyText} onChange={e => setReplyText(e.target.value)} />
+                  <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }} placeholder="Write a reply..." value={replyText} onChange={e => setReplyText(e.target.value)} />
                   <button style={s.btn("#4f46e5")} onClick={() => postReply(c.id)}>Send</button>
                 </div>
               )}
