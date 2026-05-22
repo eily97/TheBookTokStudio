@@ -277,39 +277,32 @@ export default function App() {
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
-  if (adminPage) return (
-    <div style={s.wrap}>
-      <div style={s.header}>
-        <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>PageMind</span>
-        <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
-      </div>
-      <div style={s.body}>
-        {!adminAuthed ? (
-          <>
-            <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Admin Login</div>
-            <input type="password" style={{ ...s.input, marginBottom: 10 }} placeholder="Password" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
-            <button style={s.btnFull("#4f46e5")} onClick={() => { if (adminPass === "pagemind2024") { setAdminAuthed(true); fetchPending(); } else alert("Wrong password."); }}>Login</button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
-            {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
-            {pendingSuggestions.map(sv => (
-              <div key={sv.id} style={s.card}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{sv.book} · Chapter {sv.chapter}</div>
-                <div style={{ fontSize: 15, marginBottom: 4 }}>"{sv.name}"</div>
-                <div style={{ ...s.muted, marginBottom: 12 }}>by @{sv.suggested_by}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={s.btn("#4f46e5")} onClick={() => approve(sv)}>✓ Approve</button>
-                  <button style={s.btn("#fee2e2", "#b91c1c")} onClick={() => reject(sv)}>✕ Reject</button>
-                </div>
+  if (adminPage) {
+    if (!isAdmin) { setAdminPage(false); return null; }
+    return (
+      <div style={s.wrap}>
+        <div style={s.header}>
+          <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>PageMind</span>
+          <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
+        </div>
+        <div style={s.body}>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
+          {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
+          {pendingSuggestions.map(sv => (
+            <div key={sv.id} style={s.card}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{sv.book} · Chapter {sv.chapter}</div>
+              <div style={{ fontSize: 15, marginBottom: 4 }}>"{sv.name}"</div>
+              <div style={{ ...s.muted, marginBottom: 12 }}>by @{sv.suggested_by}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={s.btn("#4f46e5")} onClick={() => approve(sv)}>✓ Approve</button>
+                <button style={s.btn("#fee2e2", "#b91c1c")} onClick={() => reject(sv)}>✕ Reject</button>
               </div>
-            ))}
-          </>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (page === "profile") return (
     <div style={s.wrap}>
@@ -369,7 +362,7 @@ export default function App() {
           ) : (
             <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
           )}
-          {isAdmin && <button onClick={() => setAdminPage(true)} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
+          {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
         </div>
       </div>
 
