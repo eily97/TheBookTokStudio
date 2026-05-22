@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const SUPABASE_URL = "https://fycpjuwufasvccezfuis.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const SB = {
   "Content-Type": "application/json",
@@ -9,9 +11,6 @@ const SB = {
   Authorization: `Bearer ${SUPABASE_KEY}`,
   Prefer: "return=representation",
 };
-
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -21,9 +20,12 @@ export default function App() {
   const [chapter, setChapter] = useState(null);
   const [chapterNames, setChapterNames] = useState({});
   const [comments, setComments] = useState([]);
+  const [replies, setReplies] = useState({});
   const [text, setText] = useState("");
   const [spoiler, setSpoiler] = useState(false);
   const [revealed, setRevealed] = useState({});
+  const [replyTo, setReplyTo] = useState(null);
+  const [replyText, setReplyText] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,22 +45,11 @@ export default function App() {
       setUser(data.session?.user || null);
       setAuthLoading(false);
     });
-    supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user || null);
-    });
+    supabase.auth.onAuthStateChange((_, session) => setUser(session?.user || null));
   }, []);
 
-  const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.href }
-    });
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
+  const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+  const signOut = () => { supabase.auth.signOut(); setUser(null); };
 
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
@@ -99,21 +90,38 @@ export default function App() {
     try {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(b.title)}&chapter=eq.${ch}&order=created_at.desc`, { headers: SB });
       const d = await r.json();
-      setComments(Array.isArray(d) ? d : []);
-    } catch { setComments([]); }
+      const cmts = Array.isArray(d) ? d : [];
+      setComments(cmts);
+      // Fetch replies for all comments
+      if (cmts.length > 0) {
+        const ids = cmts.map(c => `comment_id=eq.${c.id}`).join("&");
+        const r2 = await fetch(`${SUPABASE_URL}/rest/v1/replies?or=(${cmts.map(c => `comment_id.eq.${c.id}`).join(",")})&order=created_at.asc`, { headers: SB });
+        const rd = await r2.json();
+        const map = {};
+        (Array.isArray(rd) ? rd : []).forEach(reply => {
+          if (!map[reply.comment_id]) map[reply.comment_id] = [];
+          map[reply.comment_id].push(reply);
+        });
+        setReplies(map);
+      } else { setReplies({}); }
+    } catch { setComments([]); setReplies({}); }
     setLoading(false);
   };
 
   const post = async () => {
     if (!text.trim() || !user) return;
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
-        method: "POST", headers: SB,
-        body: JSON.stringify({ book: book.title, chapter, username, text: text.trim(), spoiler, likes: 0 }),
-      });
-      setText(""); setSpoiler(false);
-      fetchComments(book, chapter);
-    } catch { alert("Could not post comment."); }
+    await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
+      method: "POST", headers: SB,
+      body: JSON.stringify({ book: book.title, chapter, username, text: text.trim(), spoiler, likes: 0 }),
+    });
+    setText(""); setSpoiler(false);
+    fetchComments(book, chapter);
+  };
+
+  const deleteComment = async (id) => {
+    if (!confirm("Delete this comment?")) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${id}`, { method: "DELETE", headers: SB });
+    fetchComments(book, chapter);
   };
 
   const like = async (c) => {
@@ -124,24 +132,36 @@ export default function App() {
     fetchComments(book, chapter);
   };
 
+  const postReply = async (commentId) => {
+    if (!replyText.trim() || !user) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/replies`, {
+      method: "POST", headers: SB,
+      body: JSON.stringify({ comment_id: commentId, username, text: replyText.trim() }),
+    });
+    setReplyText(""); setReplyTo(null);
+    fetchComments(book, chapter);
+  };
+
+  const deleteReply = async (id) => {
+    if (!confirm("Delete this reply?")) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/replies?id=eq.${id}`, { method: "DELETE", headers: SB });
+    fetchComments(book, chapter);
+  };
+
   const submitSuggestion = async (ch) => {
     if (!suggestText.trim() || !user) return;
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, {
-        method: "POST", headers: SB,
-        body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }),
-      });
-      setSuggestSent(p => ({ ...p, [ch]: true }));
-      setSuggestText(""); setSuggestChapter(null);
-    } catch { alert("Could not submit suggestion."); }
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, {
+      method: "POST", headers: SB,
+      body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }),
+    });
+    setSuggestSent(p => ({ ...p, [ch]: true }));
+    setSuggestText(""); setSuggestChapter(null);
   };
 
   const fetchPending = async () => {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
-      const d = await r.json();
-      setPendingSuggestions(Array.isArray(d) ? d : []);
-    } catch { setPendingSuggestions([]); }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
+    const d = await r.json();
+    setPendingSuggestions(Array.isArray(d) ? d : []);
   };
 
   const approve = async (s) => {
@@ -159,10 +179,9 @@ export default function App() {
     setAiLoading(true); setAiText("");
     const cmts = comments.map(c => c.text).join("\n");
     const chTitle = chapterNames[chapter];
-    const chLabel = chTitle ? `"${chTitle}" (Chapter ${chapter})` : `Chapter ${chapter}`;
     const prompt = cmts
-      ? `"${book.title}" book's ${chLabel} reader comments:\n${cmts}\n\nWhat did readers feel? Summarize in 2-3 sentences.`
-      : `What do readers generally feel about ${chLabel} of "${book.title}"? 2-3 sentences.`;
+      ? `"${book.title}" Chapter ${chapter}${chTitle ? ` "${chTitle}"` : ""} reader comments:\n${cmts}\n\nWhat did readers feel? 2-3 sentences.`
+      : `What do readers generally feel about Chapter ${chapter} of "${book.title}"? 2-3 sentences.`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -192,6 +211,7 @@ export default function App() {
     muted: { color: "#888", fontSize: 13 },
     label: { fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
+    iconBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 6 },
   };
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
@@ -340,6 +360,7 @@ export default function App() {
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
             <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
           </div>
+
           <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#f0f0ff", "#4f46e5")}>
             {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
           </button>
@@ -349,6 +370,7 @@ export default function App() {
               <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
             </div>
           )}
+
           {user ? (
             <div style={s.card}>
               <div style={s.label}>What did you feel?</div>
@@ -366,16 +388,26 @@ export default function App() {
               <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
             </div>
           )}
+
           <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} comments`}</div>
           {!loading && comments.length === 0 && (
             <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>Be the first to share your thoughts 🌱</div>
           )}
+
           {comments.map(c => (
             <div key={c.id} style={s.card}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              {/* Comment header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, fontSize: 13, color: "#4f46e5" }}>@{c.username}</span>
-                <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
+                  {user && c.username === username && (
+                    <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }} title="Delete">🗑</button>
+                  )}
+                </div>
               </div>
+
+              {/* Comment body */}
               {c.spoiler && !revealed[c.id]
                 ? <div onClick={() => setRevealed(r => ({ ...r, [c.id]: true }))}
                     style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 14, cursor: "pointer", textAlign: "center" }}>
@@ -385,9 +417,49 @@ export default function App() {
                     {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
                     {c.text}
                   </div>}
-              <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, marginTop: 10, padding: 0 }}>
-                🤍 {c.likes} felt the same
-              </button>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+                <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>
+                  🤍 {c.likes} felt the same
+                </button>
+                {user && (
+                  <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
+                    style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>
+                    💬 Reply
+                  </button>
+                )}
+              </div>
+
+              {/* Replies */}
+              {(replies[c.id] || []).length > 0 && (
+                <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #f0f0ff" }}>
+                  {(replies[c.id] || []).map(r => (
+                    <div key={r.id} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 12, color: "#4f46e5" }}>@{r.username}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ ...s.muted, fontSize: 11 }}>{new Date(r.created_at).toLocaleDateString("en-US")}</span>
+                          {user && r.username === username && (
+                            <button onClick={() => deleteReply(r.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>{r.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Reply input */}
+              {replyTo === c.id && (
+                <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                  <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }}
+                    placeholder="Write a reply..."
+                    value={replyText} onChange={e => setReplyText(e.target.value)} />
+                  <button style={s.btn("#4f46e5")} onClick={() => postReply(c.id)}>Send</button>
+                </div>
+              )}
             </div>
           ))}
         </>}
