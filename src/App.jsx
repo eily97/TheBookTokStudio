@@ -26,14 +26,22 @@ export default function App() {
   const [searching, setSearching] = useState(false);
   const [username] = useState("okuyucu_" + Math.floor(Math.random() * 9000 + 1000));
 
-  const searchBooks = async (q) => {
+ const searchBooks = async (q) => {
     setSearch(q);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6&fields=title,author_name,cover_i,key`);
+      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&lang=eng&limit=20&fields=title,author_name,cover_i,key`);
       const d = await r.json();
-      setSearchResults(d.docs || []);
+      // Tekrar edenleri filtrele, sadece İngilizce isimli kitapları al
+      const seen = new Set();
+      const unique = (d.docs || []).filter(b => {
+        const key = b.title?.toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 6);
+      setSearchResults(unique);
     } catch { setSearchResults([]); }
     setSearching(false);
   };
