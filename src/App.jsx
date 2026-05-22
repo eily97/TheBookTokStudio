@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const SUPABASE_URL = "https://fycpjuwufasvccezfuis.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
@@ -10,9 +10,12 @@ const SB = {
   Prefer: "return=representation",
 };
 
-const ADMIN_USER = "eily97";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("home");
   const [book, setBook] = useState(null);
   const [chapter, setChapter] = useState(null);
@@ -27,7 +30,6 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [username] = useState("okuyucu_" + Math.floor(Math.random() * 9000 + 1000));
   const [suggestChapter, setSuggestChapter] = useState(null);
   const [suggestText, setSuggestText] = useState("");
   const [suggestSent, setSuggestSent] = useState({});
@@ -36,26 +38,47 @@ export default function App() {
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user || null);
+      setAuthLoading(false);
+    });
+    supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user || null);
+    });
+  }, []);
+
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.href }
+    });
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
+  const avatar = user?.user_metadata?.avatar_url;
+
   const searchBooks = async (q) => {
     setSearch(q);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const r = await fetch(
-        `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&lang=eng&limit=30&fields=title,author_name,cover_i,key,edition_count,first_publish_year,language`
-      );
+      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&lang=eng&limit=30&fields=title,author_name,cover_i,key,edition_count,first_publish_year,language`);
       const d = await r.json();
       const seen = new Set();
-      const filtered = (d.docs || [])
-        .filter(b => {
-          const key = b.title?.toLowerCase().trim();
-          if (!key || seen.has(key)) return false;
-          if (!b.language?.includes("eng")) return false;
-          if ((b.edition_count || 0) < 2) return false;
-          seen.add(key);
-          return true;
-        })
-        .slice(0, 6);
+      const filtered = (d.docs || []).filter(b => {
+        const key = b.title?.toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        if (!b.language?.includes("eng")) return false;
+        if ((b.edition_count || 0) < 2) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 6);
       setSearchResults(filtered);
     } catch { setSearchResults([]); }
     setSearching(false);
@@ -63,10 +86,7 @@ export default function App() {
 
   const fetchChapterNames = async (bookTitle) => {
     try {
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(bookTitle)}&status=eq.approved&select=chapter,name`,
-        { headers: SB }
-      );
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(bookTitle)}&status=eq.approved&select=chapter,name`, { headers: SB });
       const d = await r.json();
       const map = {};
       (Array.isArray(d) ? d : []).forEach(c => { map[c.chapter] = c.name; });
@@ -77,10 +97,7 @@ export default function App() {
   const fetchComments = async (b, ch) => {
     setLoading(true);
     try {
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(b.title)}&chapter=eq.${ch}&order=created_at.desc`,
-        { headers: SB }
-      );
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(b.title)}&chapter=eq.${ch}&order=created_at.desc`, { headers: SB });
       const d = await r.json();
       setComments(Array.isArray(d) ? d : []);
     } catch { setComments([]); }
@@ -88,7 +105,7 @@ export default function App() {
   };
 
   const post = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !user) return;
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
         method: "POST", headers: SB,
@@ -108,15 +125,14 @@ export default function App() {
   };
 
   const submitSuggestion = async (ch) => {
-    if (!suggestText.trim()) return;
+    if (!suggestText.trim() || !user) return;
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, {
         method: "POST", headers: SB,
         body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }),
       });
       setSuggestSent(p => ({ ...p, [ch]: true }));
-      setSuggestText("");
-      setSuggestChapter(null);
+      setSuggestText(""); setSuggestChapter(null);
     } catch { alert("Could not submit suggestion."); }
   };
 
@@ -129,22 +145,13 @@ export default function App() {
   };
 
   const approve = async (s) => {
-    // Önce aynı kitap+bölüm için önceki onaylıları sil
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(s.book)}&chapter=eq.${s.chapter}&status=eq.approved`, {
-      method: "DELETE", headers: SB,
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, {
-      method: "PATCH", headers: SB,
-      body: JSON.stringify({ status: "approved" }),
-    });
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(s.book)}&chapter=eq.${s.chapter}&status=eq.approved`, { method: "DELETE", headers: SB });
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "approved" }) });
     fetchPending();
   };
 
   const reject = async (s) => {
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, {
-      method: "PATCH", headers: SB,
-      body: JSON.stringify({ status: "rejected" }),
-    });
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${s.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ status: "rejected" }) });
     fetchPending();
   };
 
@@ -154,31 +161,17 @@ export default function App() {
     const chTitle = chapterNames[chapter];
     const chLabel = chTitle ? `"${chTitle}" (Chapter ${chapter})` : `Chapter ${chapter}`;
     const prompt = cmts
-      ? `"${book.title}" book's ${chLabel} reader comments:\n${cmts}\n\nBased on these, what did readers feel? Summarize in 2-3 sentences in English.`
-      : `What do readers generally feel about ${chLabel} of "${book.title}"? 2-3 sentences in English.`;
+      ? `"${book.title}" book's ${chLabel} reader comments:\n${cmts}\n\nWhat did readers feel? Summarize in 2-3 sentences.`
+      : `What do readers generally feel about ${chLabel} of "${book.title}"? 2-3 sentences.`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
       });
       const d = await r.json();
       setAiText(d.content?.map(i => i.text || "").join("") || "Could not get summary.");
     } catch { setAiText("Connection error."); }
     setAiLoading(false);
-  };
-
-  const goBook = async (b) => {
-    setBook(b);
-    setChapterNames({});
-    fetchChapterNames(b.title);
-    setPage("chapters");
-  };
-
-  const goChapter = (ch) => {
-    setChapter(ch); setAiText("");
-    fetchComments(book, ch);
-    setPage("comments");
   };
 
   const coverUrl = (b) => b?.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null;
@@ -201,7 +194,9 @@ export default function App() {
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
   };
 
-  // ADMIN PAGE
+  if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
+
+  // ADMIN
   if (adminPage) return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -221,8 +216,8 @@ export default function App() {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Chapter Name Suggestions</div>
-            {pendingSuggestions.length === 0 && <div style={{ ...s.muted }}>No pending suggestions.</div>}
+            <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
+            {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
             {pendingSuggestions.map(s2 => (
               <div key={s2.id} style={s.card}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{s2.book} · Chapter {s2.chapter}</div>
@@ -246,8 +241,18 @@ export default function App() {
         <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
           <span style={s.dot}></span>PageMind
         </span>
-        {page === "comments" && <span style={{ marginLeft: "auto", ...s.tag }}>Chapter {chapter}</span>}
-        <button onClick={() => setAdminPage(true)} style={{ marginLeft: page === "comments" ? 8 : "auto", background: "none", border: "none", color: "#ccc", fontSize: 12, cursor: "pointer" }}>⚙</button>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {user ? (
+            <>
+              {avatar && <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />}
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+              <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
+            </>
+          ) : (
+            <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
+          )}
+          <button onClick={() => setAdminPage(true)} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>
+        </div>
       </div>
 
       <div style={s.body}>
@@ -258,6 +263,12 @@ export default function App() {
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
             <div style={s.muted}>Select a chapter and share what you felt with other readers.</div>
           </div>
+          {!user && (
+            <div style={{ ...s.card, borderColor: "#e0e0ff", background: "#f8f7ff", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 14, color: "#4f46e5" }}>Sign in to leave comments and suggest chapter names.</div>
+              <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in</button>
+            </div>
+          )}
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => searchBooks(e.target.value)} />
           <div style={{ marginTop: 12 }}>
             {searching && <div style={{ ...s.muted, padding: "12px 0" }}>Searching...</div>}
@@ -265,7 +276,7 @@ export default function App() {
               <div key={i} style={s.bookCard}
                 onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                onClick={() => goBook(b)}>
+                onClick={() => { setBook(b); fetchChapterNames(b.title); setPage("chapters"); }}>
                 {coverUrl(b)
                   ? <img src={coverUrl(b)} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                   : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
@@ -275,9 +286,7 @@ export default function App() {
                 </div>
               </div>
             ))}
-            {search.length > 1 && !searching && searchResults.length === 0 && (
-              <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>
-            )}
+            {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
         </>}
 
@@ -297,12 +306,12 @@ export default function App() {
               <div style={s.chRow}
                 onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-                onClick={() => goChapter(ch)}>
+                onClick={() => { setChapter(ch); setAiText(""); fetchComments(book, ch); setPage("comments"); }}>
                 <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
                 <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>
                   {chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}
                 </span>
-                {!chapterNames[ch] && !suggestSent[ch] && (
+                {user && !chapterNames[ch] && !suggestSent[ch] && (
                   <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
                     style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer", flexShrink: 0 }}>
                     + Name
@@ -311,7 +320,7 @@ export default function App() {
                 {suggestSent[ch] && <span style={{ fontSize: 11, color: "#4f46e5" }}>Sent ✓</span>}
               </div>
               {suggestChapter === ch && (
-                <div style={{ ...s.card, marginTop: -4, marginBottom: 8, borderTop: "none", borderRadius: "0 0 10px 10px" }}>
+                <div style={{ ...s.card, marginTop: -4, marginBottom: 8 }}>
                   <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {ch}:</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening"
@@ -329,11 +338,8 @@ export default function App() {
           <button style={s.back} onClick={() => setPage("chapters")}>← Back</button>
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
-            <div style={s.muted}>
-              {chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`} · @{username}
-            </div>
+            <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
           </div>
-
           <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#f0f0ff", "#4f46e5")}>
             {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
           </button>
@@ -343,21 +349,24 @@ export default function App() {
               <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
             </div>
           )}
-
-          <div style={s.card}>
-            <div style={s.label}>What did you feel?</div>
-            <textarea value={text} onChange={e => setText(e.target.value)}
-              placeholder="Share your thoughts while reading this chapter..."
-              style={{ ...s.input, resize: "none", minHeight: 80, marginBottom: 10 }} />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
-              <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
-            </label>
-            <button onClick={post} style={s.btnFull("#4f46e5")}>Share</button>
-          </div>
-
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 24, marginBottom: 10 }}>
-            {loading ? "Loading..." : `${comments.length} comments`}
-          </div>
+          {user ? (
+            <div style={s.card}>
+              <div style={s.label}>What did you feel?</div>
+              <textarea value={text} onChange={e => setText(e.target.value)}
+                placeholder="Share your thoughts while reading this chapter..."
+                style={{ ...s.input, resize: "none", minHeight: 80, marginBottom: 10 }} />
+              <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
+                <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
+              </label>
+              <button onClick={post} style={s.btnFull("#4f46e5")}>Share</button>
+            </div>
+          ) : (
+            <div style={{ ...s.card, borderColor: "#e0e0ff", background: "#f8f7ff", textAlign: "center", padding: 24 }}>
+              <div style={{ fontSize: 15, color: "#4f46e5", marginBottom: 12 }}>Sign in to share your thoughts</div>
+              <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
+            </div>
+          )}
+          <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} comments`}</div>
           {!loading && comments.length === 0 && (
             <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>Be the first to share your thoughts 🌱</div>
           )}
