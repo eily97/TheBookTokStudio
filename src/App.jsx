@@ -39,6 +39,8 @@ export default function App() {
   const [adminPass, setAdminPass] = useState("");
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
+  const [myComments, setMyComments] = useState([]);
+  const [myCommentsLoading, setMyCommentsLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -49,7 +51,7 @@ export default function App() {
   }, []);
 
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
-  const signOut = () => { supabase.auth.signOut(); setUser(null); };
+  const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); };
 
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
@@ -92,9 +94,7 @@ export default function App() {
       const d = await r.json();
       const cmts = Array.isArray(d) ? d : [];
       setComments(cmts);
-      // Fetch replies for all comments
       if (cmts.length > 0) {
-        const ids = cmts.map(c => `comment_id=eq.${c.id}`).join("&");
         const r2 = await fetch(`${SUPABASE_URL}/rest/v1/replies?or=(${cmts.map(c => `comment_id.eq.${c.id}`).join(",")})&order=created_at.asc`, { headers: SB });
         const rd = await r2.json();
         const map = {};
@@ -108,6 +108,17 @@ export default function App() {
     setLoading(false);
   };
 
+  const fetchMyComments = async () => {
+    if (!user) return;
+    setMyCommentsLoading(true);
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?username=eq.${encodeURIComponent(username)}&order=created_at.desc`, { headers: SB });
+      const d = await r.json();
+      setMyComments(Array.isArray(d) ? d : []);
+    } catch { setMyComments([]); }
+    setMyCommentsLoading(false);
+  };
+
   const post = async () => {
     if (!text.trim() || !user) return;
     await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
@@ -118,10 +129,11 @@ export default function App() {
     fetchComments(book, chapter);
   };
 
-  const deleteComment = async (id) => {
+  const deleteComment = async (id, fromProfile = false) => {
     if (!confirm("Delete this comment?")) return;
     await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${id}`, { method: "DELETE", headers: SB });
-    fetchComments(book, chapter);
+    if (fromProfile) fetchMyComments();
+    else fetchComments(book, chapter);
   };
 
   const like = async (c) => {
@@ -255,6 +267,54 @@ export default function App() {
     </div>
   );
 
+  // PROFILE
+  if (page === "profile") return (
+    <div style={s.wrap}>
+      <div style={s.header}>
+        <span style={s.logo} onClick={() => setPage("home")}><span style={s.dot}></span>PageMind</span>
+        <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
+      </div>
+      <div style={s.body}>
+        {/* Profil başlık */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
+          {avatar
+            ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%" }} />
+            : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>👤</div>}
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{username}</div>
+            <div style={s.muted}>{user?.email}</div>
+            <div style={{ ...s.muted, marginTop: 4 }}>{myComments.length} comments</div>
+          </div>
+        </div>
+
+        <div style={s.label}>My Comments</div>
+        {myCommentsLoading && <div style={s.muted}>Loading...</div>}
+        {!myCommentsLoading && myComments.length === 0 && (
+          <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>
+        )}
+        {myComments.map(c => (
+          <div key={c.id} style={s.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span>
+                <span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
+                <button onClick={() => deleteComment(c.id, true)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
+              </div>
+            </div>
+            <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
+              {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
+              {c.text}
+            </div>
+            <div style={{ ...s.muted, marginTop: 8 }}>🤍 {c.likes} felt the same</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -264,8 +324,13 @@ export default function App() {
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           {user ? (
             <>
-              {avatar && <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />}
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+                onClick={() => { setPage("profile"); fetchMyComments(); }}>
+                {avatar
+                  ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+                  : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+              </div>
               <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
             </>
           ) : (
@@ -277,7 +342,6 @@ export default function App() {
 
       <div style={s.body}>
 
-        {/* HOME */}
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
@@ -310,7 +374,6 @@ export default function App() {
           </div>
         </>}
 
-        {/* CHAPTERS */}
         {page === "chapters" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 32 }}>
@@ -353,7 +416,6 @@ export default function App() {
           ))}
         </>}
 
-        {/* COMMENTS */}
         {page === "comments" && <>
           <button style={s.back} onClick={() => setPage("chapters")}>← Back</button>
           <div style={{ marginBottom: 24 }}>
@@ -396,18 +458,15 @@ export default function App() {
 
           {comments.map(c => (
             <div key={c.id} style={s.card}>
-              {/* Comment header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, fontSize: 13, color: "#4f46e5" }}>@{c.username}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
                   {user && c.username === username && (
-                    <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }} title="Delete">🗑</button>
+                    <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
                   )}
                 </div>
               </div>
-
-              {/* Comment body */}
               {c.spoiler && !revealed[c.id]
                 ? <div onClick={() => setRevealed(r => ({ ...r, [c.id]: true }))}
                     style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 14, cursor: "pointer", textAlign: "center" }}>
@@ -417,8 +476,6 @@ export default function App() {
                     {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
                     {c.text}
                   </div>}
-
-              {/* Actions */}
               <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
                 <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>
                   🤍 {c.likes} felt the same
@@ -430,8 +487,6 @@ export default function App() {
                   </button>
                 )}
               </div>
-
-              {/* Replies */}
               {(replies[c.id] || []).length > 0 && (
                 <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #f0f0ff" }}>
                   {(replies[c.id] || []).map(r => (
@@ -450,8 +505,6 @@ export default function App() {
                   ))}
                 </div>
               )}
-
-              {/* Reply input */}
               {replyTo === c.id && (
                 <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                   <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }}
