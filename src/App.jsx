@@ -18,7 +18,7 @@ const hasNonLatin = (str) => /[^\u0000-\u024F\u1E00-\u1EFF]/.test(str);
 const searchBooks = async (q) => {
   const [r1, r2] = await Promise.all([
     fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
-    fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
+    fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
   ]);
   const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
   const all = [...(d1.docs || []), ...(d2.docs || [])];
