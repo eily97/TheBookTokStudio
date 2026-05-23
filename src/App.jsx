@@ -110,10 +110,16 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user || null);
+      const u = data.session?.user || null;
+      setUser(u);
+      if (u) setPage("home");
       setAuthLoading(false);
     });
-    supabase.auth.onAuthStateChange((_, session) => setUser(session?.user || null));
+    supabase.auth.onAuthStateChange((event, session) => {
+      const u = session?.user || null;
+      setUser(u);
+      if (event === "SIGNED_OUT") setPage("landing");
+    });
     fetchTrending();
   }, []);
 
