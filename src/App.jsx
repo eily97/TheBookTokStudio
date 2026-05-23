@@ -16,7 +16,6 @@ const SB = {
 const hasNonLatin = (str) => /[^\u0000-\u024F\u1E00-\u1EFF]/.test(str);
 
 const searchBooks = async (q) => {
-  // author: ile yazar araması + title araması birleştir
   const [r1, r2] = await Promise.all([
     fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
     fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=20&fields=title,author_name,cover_i,key,first_publish_year,language`),
@@ -57,6 +56,15 @@ const fetchBookDescription = async (title, author) => {
   } catch {}
   return null;
 };
+
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+  </svg>
+);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -286,10 +294,6 @@ export default function App() {
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
     header: { borderBottom: "1px solid #e8e8e4", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
-    logo: { fontSize: 20, fontWeight: 700, color: "#1a1a1a", letterSpacing: -0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 },
-    logoIcon: { width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center" },
-    logoText: { fontFamily: "Georgia,serif", fontSize: 19, fontWeight: 700, letterSpacing: -0.5 },
-    dot: { color: "#f472b6" },
     body: { maxWidth: 640, margin: "0 auto", padding: "32px 20px" },
     input: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, color: "#1a1a1a", outline: "none", boxSizing: "border-box" },
     card: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 16, marginBottom: 10 },
@@ -298,12 +302,32 @@ export default function App() {
     btnFull: (bg, color = "#fff") => ({ width: "100%", background: bg, border: "none", borderRadius: 10, padding: "12px 16px", color, fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }),
     googleBtn: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "#1a1a1a" },
     back: { background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", gap: 6, padding: 0 },
-    tag: { background: "#f0f0ff", color: "#4f46e5", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 },
+    tag: { background: "#fce7f3", color: "#db2777", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 },
     muted: { color: "#888", fontSize: 13 },
     label: { fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 10 },
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
     iconBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 6 },
   };
+
+  const Logo = ({ onClick }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={onClick}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="20" height="20" viewBox="0 0 100 100">
+          <rect x="15" y="15" width="70" height="50" rx="4" fill="white" opacity="0.25"/>
+          <line x1="50" y1="15" x2="50" y2="65" stroke="white" strokeWidth="2" opacity="0.4"/>
+          <rect x="20" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
+          <rect x="20" y="31" width="18" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="20" y="38" width="21" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="56" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
+          <rect x="56" y="31" width="16" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="56" y="38" width="20" height="3" rx="1.5" fill="white" opacity="0.5"/>
+        </svg>
+      </div>
+      <span style={{ fontFamily: "Georgia,serif", fontSize: 19, fontWeight: 700, letterSpacing: -0.5, color: "#1a1a1a" }}>
+        that<span style={{ color: "#f472b6" }}>part</span>.
+      </span>
+    </div>
+  );
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
@@ -312,25 +336,10 @@ export default function App() {
     return (
       <div style={s.wrap}>
         <div style={s.header}>
-          <span style={s.logo} onClick={() => setAdminPage(false)}><span style={s.dot}></span>ThatPart</span>
+          <Logo onClick={() => setAdminPage(false)} />
           <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
         </div>
-        {showPWABanner && (
-        <div style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>📱</span>
-            <div>
-              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>Add PageMind to your home screen</div>
-              <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>Safari → Share → Add to Home Screen</div>
-            </div>
-          </div>
-          <button onClick={() => { setShowPWABanner(false); localStorage.setItem("pwa_dismissed", "1"); }}
-            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-            ✕
-          </button>
-        </div>
-      )}
-      <div style={s.body}>
+        <div style={s.body}>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Pending Suggestions</div>
           {pendingSuggestions.length === 0 && <div style={s.muted}>No pending suggestions.</div>}
           {pendingSuggestions.map(sv => (
@@ -339,7 +348,7 @@ export default function App() {
               <div style={{ fontSize: 15, marginBottom: 4 }}>"{sv.name}"</div>
               <div style={{ ...s.muted, marginBottom: 12 }}>by @{sv.suggested_by}</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={s.btn("#4f46e5")} onClick={() => approve(sv)}>✓ Approve</button>
+                <button style={s.btn("#f472b6")} onClick={() => approve(sv)}>✓ Approve</button>
                 <button style={s.btn("#fee2e2", "#b91c1c")} onClick={() => reject(sv)}>✕ Reject</button>
               </div>
             </div>
@@ -352,13 +361,13 @@ export default function App() {
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <span style={s.logo} onClick={() => setPage("home")}><span style={s.dot}></span>ThatPart</span>
+        <Logo onClick={() => setPage("home")} />
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
       </div>
       <div style={s.body}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
           {avatar ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%" }} />
-            : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>👤</div>}
+            : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>👤</div>}
           <div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{username}</div>
             <div style={s.muted}>{user?.email}</div>
@@ -388,72 +397,45 @@ export default function App() {
     </div>
   );
 
-  const GoogleIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-      <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
-    </svg>
-  );
-
-  const Logo = ({ onClick }) => (
-    <div style={s.logo} onClick={onClick}>
-      <div style={s.logoIcon}>
-        <svg width="20" height="20" viewBox="0 0 100 100">
-          <rect x="15" y="15" width="70" height="50" rx="4" fill="white" opacity="0.25"/>
-          <line x1="50" y1="15" x2="50" y2="65" stroke="white" stroke-width="2" opacity="0.4"/>
-          <rect x="20" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
-          <rect x="20" y="31" width="18" height="3" rx="1.5" fill="white" opacity="0.5"/>
-          <rect x="20" y="38" width="21" height="3" rx="1.5" fill="white" opacity="0.5"/>
-          <rect x="56" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
-          <rect x="56" y="31" width="16" height="3" rx="1.5" fill="white" opacity="0.5"/>
-          <rect x="56" y="38" width="20" height="3" rx="1.5" fill="white" opacity="0.5"/>
-          <text x="50" y="84" font-family="Georgia,serif" font-size="18" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" letter-spacing="1">that</text>
-        </svg>
-      </div>
-      <span style={s.logoText}>that<span style={s.dot}>part</span>.</span>
-    </div>
-  );
-    <div style={s.header}>
-      <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
-        <span style={s.dot}></span>ThatPart
-      </span>
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        {user ? (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
-              {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-                : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-            </div>
-            <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
-          </>
-        ) : (
-          <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
-        )}
-        {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
-      </div>
-    </div>
-  );
-
-  const BookCard = ({ b, onClick }) => (
-    <div style={s.bookCard}
-      onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
-      onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
-      onClick={onClick}>
-      {b.cover ? <img src={b.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
-        : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
-        <div style={s.muted}>{b.author}{b.year ? ` · ${b.year}` : ""}</div>
-      </div>
-    </div>
-  );
-
   return (
     <div style={s.wrap}>
-      <Header />
+      <div style={s.header}>
+        <Logo onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }} />
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {user ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
+                {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+                  : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+              </div>
+              <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
+            </>
+          ) : (
+            <button onClick={signInWithGoogle} style={{ ...s.googleBtn, width: "auto", marginBottom: 0, padding: "8px 14px" }}>
+              <GoogleIcon /> Sign in
+            </button>
+          )}
+          {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
+        </div>
+      </div>
+
+      {showPWABanner && (
+        <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>📱</span>
+            <div>
+              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>Add ThatPart to your home screen</div>
+              <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>Safari → Share → Add to Home Screen</div>
+            </div>
+          </div>
+          <button onClick={() => { setShowPWABanner(false); localStorage.setItem("pwa_dismissed", "1"); }}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+            ✕
+          </button>
+        </div>
+      )}
+
       <div style={s.body}>
 
         {page === "home" && <>
@@ -462,15 +444,27 @@ export default function App() {
             <div style={s.muted}>Select a chapter and share what you felt with other readers.</div>
           </div>
           {!user && (
-            <div style={{ ...s.card, borderColor: "#e0e0ff", background: "#f8f7ff", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 14, color: "#555", marginBottom: 16 }}>Sign in to leave comments and suggest chapter names.</div>
+            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", marginBottom: 20 }}>
+              <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>Sign in to leave comments and suggest chapter names.</div>
               <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
             </div>
           )}
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
           <div style={{ marginTop: 12 }}>
             {searching && <div style={{ ...s.muted, padding: "12px 0" }}>Searching...</div>}
-            {searchResults.map((b, i) => <BookCard key={i} b={b} onClick={() => goBook(b)} />)}
+            {searchResults.map((b, i) => (
+              <div key={i} style={s.bookCard}
+                onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
+                onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
+                onClick={() => goBook(b)}>
+                {b.cover ? <img src={b.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                  : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
+                  <div style={s.muted}>{b.author}{b.year ? ` · ${b.year}` : ""}</div>
+                </div>
+              </div>
+            ))}
             {search.length > 1 && !searching && searchResults.length === 0 && <div style={{ ...s.muted, padding: "12px 0" }}>No results found.</div>}
           </div>
           {trending.length > 0 && search.length < 2 && (
@@ -481,11 +475,11 @@ export default function App() {
                 const b = { title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" };
                 return (
                   <div key={title} style={s.bookCard}
-                    onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+                    onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
                     onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
                     onClick={() => goBook(b)}>
                     {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
-                      : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+                      : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{title}</div>
                       {info?.author && <div style={s.muted}>{info.author}</div>}
@@ -503,7 +497,7 @@ export default function App() {
           <div style={{ display: "flex", gap: 20, marginBottom: 28 }}>
             {book?.cover
               ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
-              : <div style={{ width: 90, height: 130, borderRadius: 10, background: "#f0f0ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>📚</div>}
+              : <div style={{ width: 90, height: 130, borderRadius: 10, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>📚</div>}
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 6, lineHeight: 1.2 }}>{book?.title}</div>
               <div style={{ fontSize: 15, color: "#555", marginBottom: 4 }}>{book?.author}</div>
@@ -516,13 +510,13 @@ export default function App() {
           </div>
 
           {bookDesc && (
-            <div style={{ ...s.card, background: "#f8f7ff", borderColor: "#e0e0ff", marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
+            <div style={{ ...s.card, background: "#fff8fb", borderColor: "#fce7f3", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
               <div style={{ fontSize: 14, lineHeight: 1.7, color: "#444" }}>
                 {bookDesc.length > 280 && !bookDescExpanded ? bookDesc.slice(0, 280) + "..." : bookDesc}
               </div>
               {bookDesc.length > 280 && (
-                <button onClick={() => setBookDescExpanded(!bookDescExpanded)} style={{ background: "none", border: "none", color: "#4f46e5", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 0 0", display: "block" }}>
+                <button onClick={() => setBookDescExpanded(!bookDescExpanded)} style={{ background: "none", border: "none", color: "#db2777", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 0 0", display: "block" }}>
                   {bookDescExpanded ? "Show less" : "Read more"}
                 </button>
               )}
@@ -536,7 +530,7 @@ export default function App() {
                 {topChapters.map(([ch, count]) => (
                   <div key={ch} onClick={() => { setChapter(+ch); setAiText(""); fetchComments(book, +ch); setPage("comments"); }}
                     style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                    onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+                    onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
                     onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>Ch. {ch}</span>
                     <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {count}</span>
@@ -550,7 +544,7 @@ export default function App() {
           {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
               <div style={s.chRow}
-                onMouseOver={e => e.currentTarget.style.borderColor = "#4f46e5"}
+                onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
                 onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
                 onClick={() => { setChapter(ch); setAiText(""); fetchComments(book, ch); setPage("comments"); }}>
                 <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
@@ -561,7 +555,7 @@ export default function App() {
                     <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
                       style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer" }}>+ Name</button>
                   )}
-                  {suggestSent[ch] && <span style={{ fontSize: 11, color: "#4f46e5" }}>Sent ✓</span>}
+                  {suggestSent[ch] && <span style={{ fontSize: 11, color: "#db2777" }}>Sent ✓</span>}
                 </div>
               </div>
               {suggestChapter === ch && (
@@ -569,7 +563,7 @@ export default function App() {
                   <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {ch}:</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening" value={suggestText} onChange={e => setSuggestText(e.target.value)} />
-                    <button style={s.btn("#4f46e5")} onClick={() => submitSuggestion(ch)}>Send</button>
+                    <button style={s.btn("#f472b6")} onClick={() => submitSuggestion(ch)}>Send</button>
                   </div>
                 </div>
               )}
@@ -583,12 +577,12 @@ export default function App() {
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
             <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
           </div>
-          <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#f0f0ff", "#4f46e5")}>
+          <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#fff8fb", "#db2777")}>
             {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
           </button>
           {aiText && (
-            <div style={{ ...s.card, borderColor: "#e0e0ff", marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", marginBottom: 8, letterSpacing: 0.5 }}>AI Summary</div>
+            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>AI Summary</div>
               <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
             </div>
           )}
@@ -600,12 +594,12 @@ export default function App() {
               <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
                 <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
               </label>
-              <button onClick={post} style={s.btnFull("#4f46e5")}>Share</button>
+              <button onClick={post} style={s.btnFull("#f472b6")}>Share</button>
             </div>
           ) : (
-            <div style={{ ...s.card, borderColor: "#e0e0ff", background: "#f8f7ff", textAlign: "center", padding: 24 }}>
-              <div style={{ fontSize: 15, color: "#4f46e5", marginBottom: 12 }}>Sign in to share your thoughts</div>
-              <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in with Google</button>
+            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24 }}>
+              <div style={{ fontSize: 15, color: "#555", marginBottom: 12 }}>Sign in to share your thoughts</div>
+              <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
             </div>
           )}
           <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} comments`}</div>
@@ -613,7 +607,7 @@ export default function App() {
           {comments.map(c => (
             <div key={c.id} style={s.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: "#4f46e5" }}>@{c.username}</span>
+                <span style={{ fontWeight: 600, fontSize: 13, color: "#db2777" }}>@{c.username}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
                   {user && c.username === username && <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>}
@@ -630,11 +624,11 @@ export default function App() {
                 {user && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>💬 Reply</button>}
               </div>
               {(replies[c.id] || []).length > 0 && (
-                <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #f0f0ff" }}>
+                <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #fce7f3" }}>
                   {(replies[c.id] || []).map(r => (
                     <div key={r.id} style={{ marginBottom: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                        <span style={{ fontWeight: 600, fontSize: 12, color: "#4f46e5" }}>@{r.username}</span>
+                        <span style={{ fontWeight: 600, fontSize: 12, color: "#db2777" }}>@{r.username}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ ...s.muted, fontSize: 11 }}>{new Date(r.created_at).toLocaleDateString("en-US")}</span>
                           {user && r.username === username && <button onClick={() => deleteReply(r.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>}
@@ -648,13 +642,21 @@ export default function App() {
               {replyTo === c.id && (
                 <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                   <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }} placeholder="Write a reply..." value={replyText} onChange={e => setReplyText(e.target.value)} />
-                  <button style={s.btn("#4f46e5")} onClick={() => postReply(c.id)}>Send</button>
+                  <button style={s.btn("#f472b6")} onClick={() => postReply(c.id)}>Send</button>
                 </div>
               )}
             </div>
           ))}
         </>}
 
+      </div>
+
+      {/* Footer */}
+      <div style={{ borderTop: "1px solid #e8e8e4", padding: "24px 20px", textAlign: "center", background: "#fff" }}>
+        <div style={{ fontFamily: "Georgia,serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+          that<span style={{ color: "#f472b6" }}>part</span>.
+        </div>
+        <div style={{ color: "#aaa", fontSize: 12 }}>by <a href="https://www.tiktok.com/@thebooktokstudio" target="_blank" rel="noreferrer" style={{ color: "#db2777", textDecoration: "none", fontWeight: 600 }}>TheBookTokStudio</a></div>
       </div>
     </div>
   );
