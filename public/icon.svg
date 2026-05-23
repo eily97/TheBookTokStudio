@@ -1,25 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f472b6"/>
-      <stop offset="100%" stop-color="#c084fc"/>
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#f472b6"/>
     </linearGradient>
   </defs>
 
   <!-- Arka plan -->
   <rect width="100" height="100" rx="22" fill="url(#g)"/>
 
-  <!-- Küçük kitap sol üst -->
-  <rect x="10" y="10" width="22" height="28" rx="3" fill="white" opacity="0.5"/>
-  <rect x="14" y="15" width="14" height="2" rx="1" fill="white" opacity="0.5"/>
-  <rect x="14" y="19" width="10" height="2" rx="1" fill="white" opacity="0.4"/>
-  <rect x="14" y="23" width="12" height="2" rx="1" fill="white" opacity="0.4"/>
-  <rect x="14" y="27" width="8" height="2" rx="1" fill="white" opacity="0.3"/>
+  <!-- Kitap gövdesi -->
+  <rect x="18" y="18" width="64" height="46" rx="4" fill="white" opacity="0.2"/>
+  <rect x="18" y="18" width="64" height="46" rx="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.35"/>
+  <!-- Kitap ortası çizgisi -->
+  <line x1="50" y1="18" x2="50" y2="64" stroke="white" stroke-width="1.5" opacity="0.35"/>
+  <!-- Sol sayfa satırları -->
+  <rect x="24" y="27" width="20" height="2.5" rx="1.25" fill="white" opacity="0.55"/>
+  <rect x="24" y="33" width="15" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="24" y="39" width="18" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="24" y="45" width="12" height="2.5" rx="1.25" fill="white" opacity="0.35"/>
+  <!-- Sağ sayfa satırları -->
+  <rect x="56" y="27" width="20" height="2.5" rx="1.25" fill="white" opacity="0.55"/>
+  <rect x="56" y="33" width="14" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="56" y="39" width="18" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="56" y="45" width="10" height="2.5" rx="1.25" fill="white" opacity="0.35"/>
 
-  <!-- P harfi -->
-  <text x="58" y="70" font-family="Georgia,serif" font-size="54" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle">P</text>
-
-  <!-- Alt sayfa çizgileri -->
-  <rect x="10" y="78" width="80" height="5" rx="2.5" fill="white" opacity="0.3"/>
-  <rect x="10" y="87" width="54" height="4" rx="2" fill="white" opacity="0.2"/>
+  <!-- "that" yazısı -->
+  <text x="50" y="78" font-family="Georgia,serif" font-size="16" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" letter-spacing="1.5">that</text>
+  <!-- "part." yazısı -->
+  <text x="50" y="91" font-family="Georgia,serif" font-size="9" fill="white" text-anchor="middle" dominant-baseline="middle" opacity="0.75" letter-spacing="1">part.</text>
 </svg>
