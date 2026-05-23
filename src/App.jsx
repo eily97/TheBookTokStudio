@@ -479,7 +479,7 @@ export default function App() {
                 style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
                 🔔
                 {unreadCount > 0 && (
-                  <span style={{ position: "absolute", top: 0, right: 0, background: "#f472b6", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                  <span                 style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                     {unreadCount}
                   </span>
                 )}
