@@ -70,6 +70,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("landing");
+  const [profileTab, setProfileTab] = useState("comments");
   const [book, setBook] = useState(null);
   const [bookDesc, setBookDesc] = useState(null);
   const [bookDescExpanded, setBookDescExpanded] = useState(false);
@@ -97,6 +98,7 @@ export default function App() {
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
   const [myComments, setMyComments] = useState([]);
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
+  const [readingList, setReadingList] = useState([]);
   const [trending, setTrending] = useState([]);
   const [trendingCovers, setTrendingCovers] = useState({});
   const [searchTimer, setSearchTimer] = useState(null);
@@ -124,7 +126,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user) { fetchNotifications(); setPage("home"); }
+    if (user) fetchNotifications();
   }, [user]);
 
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
@@ -132,6 +134,7 @@ export default function App() {
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
   const isAdmin = user?.email === ADMIN_EMAIL;
+  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "";
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -238,6 +241,33 @@ export default function App() {
     setMyCommentsLoading(false);
   };
 
+  const fetchReadingList = async () => {
+    if (!user) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/reading_list?username=eq.${encodeURIComponent(username)}&order=added_at.desc`, { headers: SB });
+      const d = await r.json();
+      setReadingList(Array.isArray(d) ? d : []);
+    } catch { setReadingList([]); }
+  };
+
+  const addToReadingList = async (b) => {
+    if (!user) return;
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/reading_list`, {
+        method: "POST", headers: SB,
+        body: JSON.stringify({ username, book: b.title, author: b.author, cover: b.cover }),
+      });
+      fetchReadingList();
+    } catch {}
+  };
+
+  const removeFromReadingList = async (id) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/reading_list?id=eq.${id}`, { method: "DELETE", headers: SB });
+    fetchReadingList();
+  };
+
+  const isInReadingList = (bookTitle) => readingList.some(r => r.book === bookTitle);
+
   const post = async () => {
     if (!text.trim() || !user) return;
     await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
@@ -330,10 +360,18 @@ export default function App() {
     fetchChapterNames(b.title);
     fetchChapterCounts(b.title);
     fetchBookDescription(b.title, b.author).then(desc => setBookDesc(desc));
+    if (user) fetchReadingList();
     setPage("book");
   };
 
   const topChapters = Object.entries(chapterCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  // Stats from myComments
+  const totalLikes = myComments.reduce((sum, c) => sum + (c.likes || 0), 0);
+  const booksRead = [...new Set(myComments.map(c => c.book))];
+  const mostActiveBook = booksRead.length > 0
+    ? booksRead.map(b => ({ book: b, count: myComments.filter(c => c.book === b).length })).sort((a, b) => b.count - a.count)[0]
+    : null;
 
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
@@ -351,6 +389,7 @@ export default function App() {
     label: { fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 10 },
     chRow: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 },
     iconBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 6 },
+    tab: (active) => ({ background: active ? "#fce7f3" : "none", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#db2777" : "#888", cursor: "pointer" }),
   };
 
   const Logo = ({ onClick }) => (
@@ -384,7 +423,7 @@ export default function App() {
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
-  // LANDING PAGE
+  // LANDING
   if (page === "landing") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -395,8 +434,6 @@ export default function App() {
           </button>
         </div>
       </div>
-
-      {/* Hero */}
       <div style={{ background: "linear-gradient(160deg, #fff8fb 0%, #fafaf8 60%)", padding: "60px 20px 48px", textAlign: "center" }}>
         <div style={{ maxWidth: 540, margin: "0 auto" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#db2777", letterSpacing: 1, marginBottom: 16 }}>FOR READERS WHO FEEL TOO MUCH</div>
@@ -415,8 +452,6 @@ export default function App() {
           <div style={{ marginTop: 12, color: "#aaa", fontSize: 13 }}>No account needed to browse</div>
         </div>
       </div>
-
-      {/* How it works */}
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 20px" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, textAlign: "center", marginBottom: 24 }}>HOW IT WORKS</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
@@ -433,16 +468,13 @@ export default function App() {
           ))}
         </div>
       </div>
-
-      {/* Trending */}
       {trending.length > 0 && (
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 20px 48px" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 16 }}>🔥 TRENDING THIS WEEK</div>
           {trending.slice(0, 3).map(([title, count]) => {
             const info = trendingCovers[title];
             return (
-              <div key={title} style={s.bookCard}
-                onClick={() => { goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" }); }}>
+              <div key={title} style={s.bookCard} onClick={() => goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" })}>
                 {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                   : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
                 <div style={{ flex: 1 }}>
@@ -453,13 +485,9 @@ export default function App() {
               </div>
             );
           })}
-          <button onClick={() => setPage("home")} style={{ ...s.btnFull("#fce7f3", "#db2777"), marginTop: 8 }}>
-            See all books →
-          </button>
+          <button onClick={() => setPage("home")} style={{ ...s.btnFull("#fce7f3", "#db2777"), marginTop: 8 }}>See all books →</button>
         </div>
       )}
-
-      {/* CTA */}
       <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "48px 20px", textAlign: "center" }}>
         <div style={{ maxWidth: 480, margin: "0 auto" }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 12, letterSpacing: -0.5 }}>Ready to find your people?</div>
@@ -469,7 +497,6 @@ export default function App() {
           </button>
         </div>
       </div>
-
       <Footer />
     </div>
   );
@@ -529,6 +556,7 @@ export default function App() {
     </div>
   );
 
+  // PROFILE
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -536,34 +564,102 @@ export default function App() {
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
       </div>
       <div style={s.body}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
-          {avatar ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%" }} />
-            : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>👤</div>}
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{username}</div>
-            <div style={s.muted}>{user?.email}</div>
-            <div style={{ ...s.muted, marginTop: 4 }}>{myComments.length} comments</div>
+
+        {/* Profile Hero */}
+        <div style={{ background: "linear-gradient(135deg, #fff8fb, #fafaf8)", borderRadius: 16, padding: 20, marginBottom: 20, border: "1.5px solid #fce7f3" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+            {avatar ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%", border: "3px solid #fce7f3" }} />
+              : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, color: "#fff" }}>
+                  {username[0]?.toUpperCase()}
+                </div>}
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{username}</div>
+              <div style={{ ...s.muted, fontSize: 12 }}>Member since {joinDate}</div>
+            </div>
           </div>
-        </div>
-        <div style={s.label}>My Comments</div>
-        {myCommentsLoading && <div style={s.muted}>Loading...</div>}
-        {!myCommentsLoading && myComments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>}
-        {myComments.map(c => (
-          <div key={c.id} style={s.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <div><span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span><span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
-                <button onClick={() => deleteComment(c.id, true)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
+
+          {/* Stats */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {[
+              { value: myComments.length, label: "comments" },
+              { value: totalLikes, label: "likes received" },
+              { value: booksRead.length, label: "books read" },
+            ].map((stat, i) => (
+              <div key={i} style={{ background: "#fff", borderRadius: 10, padding: "12px 8px", textAlign: "center", border: "1px solid #fce7f3" }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#db2777" }}>{stat.value}</div>
+                <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {mostActiveBook && (
+            <div style={{ marginTop: 12, background: "#fff", borderRadius: 10, padding: "10px 14px", border: "1px solid #fce7f3", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🔥</span>
+              <div>
+                <div style={{ fontSize: 11, color: "#888" }}>Most active in</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{mostActiveBook.book}</div>
               </div>
             </div>
-            <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
-              {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
-              {c.text}
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#f5f5f5", borderRadius: 10, padding: 4 }}>
+          {["comments", "reading list"].map(tab => (
+            <button key={tab} onClick={() => { setProfileTab(tab); if (tab === "reading list") fetchReadingList(); }}
+              style={{ ...s.tab(profileTab === tab), flex: 1, textTransform: "capitalize" }}>
+              {tab === "comments" ? `💬 Comments` : `📚 Reading List`}
+            </button>
+          ))}
+        </div>
+
+        {/* Comments Tab */}
+        {profileTab === "comments" && <>
+          {myCommentsLoading && <div style={s.muted}>Loading...</div>}
+          {!myCommentsLoading && myComments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>}
+          {myComments.map(c => (
+            <div key={c.id} style={s.card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span>
+                  <span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
+                  <button onClick={() => deleteComment(c.id, true)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
+                </div>
+              </div>
+              <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
+                {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
+                {c.text}
+              </div>
+              <div style={{ ...s.muted, marginTop: 8 }}>🤍 {c.likes} felt the same</div>
             </div>
-            <div style={{ ...s.muted, marginTop: 8 }}>🤍 {c.likes} felt the same</div>
-          </div>
-        ))}
+          ))}
+        </>}
+
+        {/* Reading List Tab */}
+        {profileTab === "reading list" && <>
+          {readingList.length === 0 && (
+            <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📚</div>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Your reading list is empty</div>
+              <div style={{ fontSize: 13 }}>Add books you want to read from any book page</div>
+            </div>
+          )}
+          {readingList.map(item => (
+            <div key={item.id} style={{ ...s.bookCard, cursor: "default" }}>
+              {item.cover ? <img src={item.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{item.book}</div>
+                <div style={s.muted}>{item.author}</div>
+              </div>
+              <button onClick={() => removeFromReadingList(item.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
+            </div>
+          ))}
+        </>}
+
       </div>
       <Footer />
     </div>
@@ -583,9 +679,9 @@ export default function App() {
               </span>
             )}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); fetchReadingList(); }}>
             {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-              : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
+              : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "#fff", fontWeight: 700 }}>{username[0]?.toUpperCase()}</div>}
             <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
           </div>
           <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
@@ -608,6 +704,7 @@ export default function App() {
       )}
 
       <div style={s.body}>
+
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
@@ -669,8 +766,15 @@ export default function App() {
                 {bookTotalComments > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {bookTotalComments} {bookTotalComments === 1 ? "comment" : "comments"}</span>}
                 {topChapters.length > 0 && <span style={s.tag}>Most active: Ch. {topChapters[0][0]}</span>}
               </div>
+              {user && (
+                <button onClick={() => isInReadingList(book.title) ? null : addToReadingList(book)}
+                  style={{ marginTop: 12, background: isInReadingList(book.title) ? "#fce7f3" : "#fff", border: "1.5px solid #fce7f3", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: isInReadingList(book.title) ? "default" : "pointer", color: "#db2777" }}>
+                  {isInReadingList(book.title) ? "✓ In reading list" : "+ Add to reading list"}
+                </button>
+              )}
             </div>
           </div>
+
           {bookDesc && (
             <div style={{ ...s.card, background: "#fff8fb", borderColor: "#fce7f3", marginBottom: 24 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
@@ -684,6 +788,7 @@ export default function App() {
               )}
             </div>
           )}
+
           {topChapters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <div style={s.label}>Most discussed chapters</div>
@@ -700,6 +805,7 @@ export default function App() {
               </div>
             </div>
           )}
+
           <div style={s.label}>All chapters</div>
           {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
@@ -741,10 +847,10 @@ export default function App() {
             <button onClick={() => {
               const url = `${window.location.origin}?book=${encodeURIComponent(book.title)}&chapter=${chapter}`;
               if (navigator.share) {
-                navigator.share({ title: `${book.title} — Chapter ${chapter}`, text: `Check out the thoughts on Chapter ${chapter} of ${book.title} on ThatPart!`, url });
+                navigator.share({ title: `${book.title} — Chapter ${chapter}`, text: `Check out the thoughts on Chapter ${chapter} of "${book.title}" on ThatPart!`, url });
               } else {
                 navigator.clipboard.writeText(url);
-                alert("Link copied!");
+                alert("Link copied! 🔗");
               }
             }} style={{ background: "#fce7f3", border: "none", borderRadius: 10, padding: "8px 14px", color: "#db2777", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
               Share 🔗
@@ -821,6 +927,7 @@ export default function App() {
             </div>
           ))}
         </>}
+
       </div>
       <Footer />
     </div>
