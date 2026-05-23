@@ -69,7 +69,7 @@ const GoogleIcon = () => (
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [page, setPage] = useState("home");
+  const [page, setPage] = useState("landing");
   const [book, setBook] = useState(null);
   const [bookDesc, setBookDesc] = useState(null);
   const [bookDescExpanded, setBookDescExpanded] = useState(false);
@@ -106,7 +106,6 @@ export default function App() {
     return !isStandalone && !dismissed;
   });
   const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
@@ -119,11 +118,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user) fetchNotifications();
+    if (user) { fetchNotifications(); setPage("home"); }
   }, [user]);
 
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
-  const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); setNotifications([]); };
+  const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("landing"); setNotifications([]); };
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -142,8 +141,7 @@ export default function App() {
     if (!user) return;
     const uname = user?.user_metadata?.name || user?.email?.split("@")[0];
     await fetch(`${SUPABASE_URL}/rest/v1/notifications?username=eq.${encodeURIComponent(uname)}&is_read=eq.false`, {
-      method: "PATCH", headers: SB,
-      body: JSON.stringify({ is_read: true }),
+      method: "PATCH", headers: SB, body: JSON.stringify({ is_read: true }),
     });
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
@@ -253,7 +251,6 @@ export default function App() {
 
   const like = async (c) => {
     await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${c.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ likes: c.likes + 1 }) });
-    // Notify comment owner
     if (c.username !== username) {
       await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
         method: "POST", headers: SB,
@@ -267,7 +264,6 @@ export default function App() {
     if (!replyText.trim() || !user) return;
     const parentComment = comments.find(c => c.id === commentId);
     await fetch(`${SUPABASE_URL}/rest/v1/replies`, { method: "POST", headers: SB, body: JSON.stringify({ comment_id: commentId, username, text: replyText.trim() }) });
-    // Notify comment owner
     if (parentComment && parentComment.username !== username) {
       await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
         method: "POST", headers: SB,
@@ -371,7 +367,106 @@ export default function App() {
     </div>
   );
 
+  const Footer = () => (
+    <div style={{ borderTop: "1px solid #e8e8e4", padding: "24px 20px", textAlign: "center", background: "#fff" }}>
+      <div style={{ fontFamily: "Georgia,serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+        that<span style={{ color: "#f472b6" }}>part</span>.
+      </div>
+      <div style={{ color: "#aaa", fontSize: 12 }}>by <a href="https://www.tiktok.com/@thebooktokstudio" target="_blank" rel="noreferrer" style={{ color: "#db2777", textDecoration: "none", fontWeight: 600 }}>TheBookTokStudio</a></div>
+    </div>
+  );
+
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
+
+  // LANDING PAGE
+  if (page === "landing") return (
+    <div style={s.wrap}>
+      <div style={s.header}>
+        <Logo onClick={() => {}} />
+        <div style={{ marginLeft: "auto" }}>
+          <button onClick={signInWithGoogle} style={{ ...s.googleBtn, width: "auto", marginBottom: 0, padding: "8px 14px" }}>
+            <GoogleIcon /> Sign in
+          </button>
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div style={{ background: "linear-gradient(160deg, #fff8fb 0%, #fafaf8 60%)", padding: "60px 20px 48px", textAlign: "center" }}>
+        <div style={{ maxWidth: 540, margin: "0 auto" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#db2777", letterSpacing: 1, marginBottom: 16 }}>FOR READERS WHO FEEL TOO MUCH</div>
+          <h1 style={{ fontSize: 42, fontWeight: 800, lineHeight: 1.15, letterSpacing: -1.5, margin: "0 0 16px", color: "#1a1a1a" }}>
+            that part when<br />
+            <span style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              you need to talk about it.
+            </span>
+          </h1>
+          <p style={{ fontSize: 17, color: "#666", lineHeight: 1.7, marginBottom: 32 }}>
+            Share what you felt, chapter by chapter.<br />Find readers who felt the exact same thing.
+          </p>
+          <button onClick={() => setPage("home")} style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", border: "none", borderRadius: 14, padding: "16px 36px", color: "#fff", fontSize: 17, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(244,114,182,0.35)" }}>
+            Find your book →
+          </button>
+          <div style={{ marginTop: 12, color: "#aaa", fontSize: 13 }}>No account needed to browse</div>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 20px" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, textAlign: "center", marginBottom: 24 }}>HOW IT WORKS</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {[
+            { icon: "🔍", title: "Find your book", desc: "Search from millions of books" },
+            { icon: "📖", title: "Pick a chapter", desc: "See who else read the same part" },
+            { icon: "💬", title: "Share the feeling", desc: "Did others feel it too?" },
+          ].map((item, i) => (
+            <div key={i} style={{ ...s.card, textAlign: "center", padding: "20px 12px" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{item.icon}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{item.title}</div>
+              <div style={{ color: "#888", fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Trending */}
+      {trending.length > 0 && (
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 20px 48px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: 0.8, marginBottom: 16 }}>🔥 TRENDING THIS WEEK</div>
+          {trending.slice(0, 3).map(([title, count]) => {
+            const info = trendingCovers[title];
+            return (
+              <div key={title} style={s.bookCard}
+                onClick={() => { goBook({ title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" }); }}>
+                {info?.cover ? <img src={info.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                  : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{title}</div>
+                  {info?.author && <div style={s.muted}>{info.author}</div>}
+                </div>
+                <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {count}</span>
+              </div>
+            );
+          })}
+          <button onClick={() => setPage("home")} style={{ ...s.btnFull("#fce7f3", "#db2777"), marginTop: 8 }}>
+            See all books →
+          </button>
+        </div>
+      )}
+
+      {/* CTA */}
+      <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "48px 20px", textAlign: "center" }}>
+        <div style={{ maxWidth: 480, margin: "0 auto" }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 12, letterSpacing: -0.5 }}>Ready to find your people?</div>
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 15, marginBottom: 24 }}>Join readers sharing their chapter-by-chapter feelings.</div>
+          <button onClick={signInWithGoogle} style={{ background: "#fff", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", color: "#db2777", display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <GoogleIcon /> Continue with Google
+          </button>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
 
   if (adminPage) {
     if (!isAdmin) { setAdminPage(false); return null; }
@@ -420,7 +515,7 @@ export default function App() {
                 <div style={{ fontSize: 14, color: "#333", lineHeight: 1.5 }}>{n.message}</div>
                 <div style={{ ...s.muted, marginTop: 4, fontSize: 12 }}>{new Date(n.created_at).toLocaleDateString("en-US")}</div>
               </div>
-              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f472b6", flexShrink: 0, marginTop: 4 }} />}
+              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#db2777", flexShrink: 0, marginTop: 4 }} />}
             </div>
           </div>
         ))}
@@ -464,38 +559,30 @@ export default function App() {
           </div>
         ))}
       </div>
+      <Footer />
     </div>
   );
 
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <Logo onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }} />
+        <Logo onClick={() => setPage("home")} />
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          {user ? (
-            <>
-              {/* Bildirim zili */}
-              <button onClick={() => { setPage("notifications"); fetchNotifications(); }}
-                style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
-                🔔
-                {unreadCount > 0 && (
-                  <span                 style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
-                {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-                  : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-              </div>
-              <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
-            </>
-          ) : (
-            <button onClick={signInWithGoogle} style={{ ...s.googleBtn, width: "auto", marginBottom: 0, padding: "8px 14px" }}>
-              <GoogleIcon /> Sign in
-            </button>
-          )}
+          <button onClick={() => { setPage("notifications"); fetchNotifications(); }}
+            style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
+            🔔
+            {unreadCount > 0 && (
+              <span style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
+            {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+              : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
+            <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+          </div>
+          <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
           {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
         </div>
       </div>
@@ -510,25 +597,16 @@ export default function App() {
             </div>
           </div>
           <button onClick={() => { setShowPWABanner(false); localStorage.setItem("pwa_dismissed", "1"); }}
-            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-            ✕
-          </button>
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>✕</button>
         </div>
       )}
 
       <div style={s.body}>
-
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
             <div style={s.muted}>Select a chapter and share what you felt with other readers.</div>
           </div>
-          {!user && (
-            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", marginBottom: 20 }}>
-              <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>Sign in to leave comments and suggest chapter names.</div>
-              <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
-            </div>
-          )}
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
           <div style={{ marginTop: 12 }}>
             {searching && <div style={{ ...s.muted, padding: "12px 0" }}>Searching...</div>}
@@ -575,8 +653,7 @@ export default function App() {
         {page === "book" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
           <div style={{ display: "flex", gap: 20, marginBottom: 28 }}>
-            {book?.cover
-              ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
+            {book?.cover ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
               : <div style={{ width: 90, height: 130, borderRadius: 10, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>📚</div>}
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 6, lineHeight: 1.2 }}>{book?.title}</div>
@@ -588,7 +665,6 @@ export default function App() {
               </div>
             </div>
           </div>
-
           {bookDesc && (
             <div style={{ ...s.card, background: "#fff8fb", borderColor: "#fce7f3", marginBottom: 24 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
@@ -602,7 +678,6 @@ export default function App() {
               )}
             </div>
           )}
-
           {topChapters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <div style={s.label}>Most discussed chapters</div>
@@ -619,7 +694,6 @@ export default function App() {
               </div>
             </div>
           )}
-
           <div style={s.label}>All chapters</div>
           {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
@@ -728,15 +802,8 @@ export default function App() {
             </div>
           ))}
         </>}
-
       </div>
-
-      <div style={{ borderTop: "1px solid #e8e8e4", padding: "24px 20px", textAlign: "center", background: "#fff" }}>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
-          that<span style={{ color: "#f472b6" }}>part</span>.
-        </div>
-        <div style={{ color: "#aaa", fontSize: 12 }}>by <a href="https://www.tiktok.com/@thebooktokstudio" target="_blank" rel="noreferrer" style={{ color: "#db2777", textDecoration: "none", fontWeight: 600 }}>TheBookTokStudio</a></div>
-      </div>
+      <Footer />
     </div>
   );
 }
