@@ -105,6 +105,9 @@ export default function App() {
     const dismissed = localStorage.getItem("pwa_dismissed");
     return !isStandalone && !dismissed;
   });
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -115,11 +118,35 @@ export default function App() {
     fetchTrending();
   }, []);
 
+  useEffect(() => {
+    if (user) fetchNotifications();
+  }, [user]);
+
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
-  const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); };
+  const signOut = () => { supabase.auth.signOut(); setUser(null); setPage("home"); setNotifications([]); };
   const username = user?.user_metadata?.name || user?.email?.split("@")[0] || "reader";
   const avatar = user?.user_metadata?.avatar_url;
   const isAdmin = user?.email === ADMIN_EMAIL;
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    try {
+      const uname = user?.user_metadata?.name || user?.email?.split("@")[0];
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/notifications?username=eq.${encodeURIComponent(uname)}&order=created_at.desc&limit=20`, { headers: SB });
+      const d = await r.json();
+      setNotifications(Array.isArray(d) ? d : []);
+    } catch { setNotifications([]); }
+  };
+
+  const markAllRead = async () => {
+    if (!user) return;
+    const uname = user?.user_metadata?.name || user?.email?.split("@")[0];
+    await fetch(`${SUPABASE_URL}/rest/v1/notifications?username=eq.${encodeURIComponent(uname)}&is_read=eq.false`, {
+      method: "PATCH", headers: SB,
+      body: JSON.stringify({ is_read: true }),
+    });
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
 
   const fetchTrending = async () => {
     try {
@@ -226,12 +253,27 @@ export default function App() {
 
   const like = async (c) => {
     await fetch(`${SUPABASE_URL}/rest/v1/comments?id=eq.${c.id}`, { method: "PATCH", headers: SB, body: JSON.stringify({ likes: c.likes + 1 }) });
+    // Notify comment owner
+    if (c.username !== username) {
+      await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+        method: "POST", headers: SB,
+        body: JSON.stringify({ username: c.username, type: "like", message: `${username} felt the same about your comment on ${book.title} Ch.${chapter}`, book: book.title, chapter, comment_id: c.id }),
+      });
+    }
     fetchComments(book, chapter);
   };
 
   const postReply = async (commentId) => {
     if (!replyText.trim() || !user) return;
+    const parentComment = comments.find(c => c.id === commentId);
     await fetch(`${SUPABASE_URL}/rest/v1/replies`, { method: "POST", headers: SB, body: JSON.stringify({ comment_id: commentId, username, text: replyText.trim() }) });
+    // Notify comment owner
+    if (parentComment && parentComment.username !== username) {
+      await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+        method: "POST", headers: SB,
+        body: JSON.stringify({ username: parentComment.username, type: "reply", message: `${username} replied to your comment on ${book.title} Ch.${chapter}`, book: book.title, chapter, comment_id: commentId }),
+      });
+    }
     setReplyText(""); setReplyTo(null);
     fetchComments(book, chapter);
   };
@@ -293,7 +335,7 @@ export default function App() {
 
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
-    header: { borderBottom: "1px solid #e8e8e4", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
+    header: { borderBottom: "1px solid #e8e8e4", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
     body: { maxWidth: 640, margin: "0 auto", padding: "24px 16px" },
     input: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, color: "#1a1a1a", outline: "none", boxSizing: "border-box" },
     card: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 16, marginBottom: 10 },
@@ -358,6 +400,34 @@ export default function App() {
     );
   }
 
+  if (page === "notifications") return (
+    <div style={s.wrap}>
+      <div style={s.header}>
+        <Logo onClick={() => setPage("home")} />
+        <button onClick={() => setPage("home")} style={{ marginLeft: "auto", background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer" }}>← Back</button>
+      </div>
+      <div style={s.body}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>Notifications</div>
+          {unreadCount > 0 && <button onClick={markAllRead} style={{ ...s.btn("#fce7f3", "#db2777"), fontSize: 13 }}>Mark all read</button>}
+        </div>
+        {notifications.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>No notifications yet 🌱</div>}
+        {notifications.map(n => (
+          <div key={n.id} style={{ ...s.card, borderLeft: n.is_read ? "1.5px solid #e8e8e4" : "3px solid #f472b6", background: n.is_read ? "#fff" : "#fff8fb" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 18 }}>{n.type === "reply" ? "💬" : "🤍"}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "#333", lineHeight: 1.5 }}>{n.message}</div>
+                <div style={{ ...s.muted, marginTop: 4, fontSize: 12 }}>{new Date(n.created_at).toLocaleDateString("en-US")}</div>
+              </div>
+              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f472b6", flexShrink: 0, marginTop: 4 }} />}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -404,6 +474,16 @@ export default function App() {
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           {user ? (
             <>
+              {/* Bildirim zili */}
+              <button onClick={() => { setPage("notifications"); fetchNotifications(); }}
+                style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
+                🔔
+                {unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: 0, right: 0, background: "#f472b6", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); }}>
                 {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
                   : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>👤</div>}
@@ -602,7 +682,7 @@ export default function App() {
               <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
             </div>
           )}
-          <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} comments`}</div>
+          <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`}</div>
           {!loading && comments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>Be the first to share your thoughts 🌱</div>}
           {comments.map(c => (
             <div key={c.id} style={s.card}>
@@ -651,7 +731,6 @@ export default function App() {
 
       </div>
 
-      {/* Footer */}
       <div style={{ borderTop: "1px solid #e8e8e4", padding: "24px 20px", textAlign: "center", background: "#fff" }}>
         <div style={{ fontFamily: "Georgia,serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
           that<span style={{ color: "#f472b6" }}>part</span>.
