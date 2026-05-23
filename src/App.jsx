@@ -82,6 +82,7 @@ export default function App() {
   const [replies, setReplies] = useState({});
   const [text, setText] = useState("");
   const [spoiler, setSpoiler] = useState(false);
+  const [postSuccess, setPostSuccess] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState("");
@@ -94,9 +95,7 @@ export default function App() {
   const [suggestChapter, setSuggestChapter] = useState(null);
   const [suggestText, setSuggestText] = useState("");
   const [suggestSent, setSuggestSent] = useState({});
-  const [postSuccess, setPostSuccess] = useState(false);
-
-
+  const [adminPage, setAdminPage] = useState(false);
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
   const [myComments, setMyComments] = useState([]);
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
@@ -369,8 +368,6 @@ export default function App() {
   };
 
   const topChapters = Object.entries(chapterCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-  // Stats from myComments
   const totalLikes = myComments.reduce((sum, c) => sum + (c.likes || 0), 0);
   const booksRead = [...new Set(myComments.map(c => c.book))];
   const mostActiveBook = booksRead.length > 0
@@ -425,9 +422,32 @@ export default function App() {
     </div>
   );
 
+  const MainHeader = () => (
+    <div style={s.header}>
+      <Logo onClick={() => setPage("home")} />
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={() => { setPage("notifications"); fetchNotifications(); }}
+          style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
+          🩷
+          {unreadCount > 0 && (
+            <span style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); fetchReadingList(); }}>
+          {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+            : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "#fff", fontWeight: 700 }}>{username[0]?.toUpperCase()}</div>}
+          <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+        </div>
+        <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
+        {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
+      </div>
+    </div>
+  );
+
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
-  // LANDING
   if (page === "landing") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -560,7 +580,6 @@ export default function App() {
     </div>
   );
 
-  // PROFILE
   if (page === "profile") return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -568,8 +587,6 @@ export default function App() {
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
       </div>
       <div style={s.body}>
-
-        {/* Profile Hero */}
         <div style={{ background: "linear-gradient(135deg, #fff8fb, #fafaf8)", borderRadius: 16, padding: 20, marginBottom: 20, border: "1.5px solid #fce7f3" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
             {avatar ? <img src={avatar} alt="" style={{ width: 64, height: 64, borderRadius: "50%", border: "3px solid #fce7f3" }} />
@@ -581,8 +598,6 @@ export default function App() {
               <div style={{ ...s.muted, fontSize: 12 }}>Member since {joinDate}</div>
             </div>
           </div>
-
-          {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
             {[
               { value: myComments.length, label: "comments" },
@@ -595,7 +610,6 @@ export default function App() {
               </div>
             ))}
           </div>
-
           {mostActiveBook && (
             <div style={{ marginTop: 12, background: "#fff", borderRadius: 10, padding: "10px 14px", border: "1px solid #fce7f3", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>🔥</span>
@@ -606,28 +620,21 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {/* Tabs */}
         <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#f5f5f5", borderRadius: 10, padding: 4 }}>
           {["comments", "reading list"].map(tab => (
             <button key={tab} onClick={() => { setProfileTab(tab); if (tab === "reading list") fetchReadingList(); }}
-              style={{ ...s.tab(profileTab === tab), flex: 1, textTransform: "capitalize" }}>
-              {tab === "comments" ? `💬 Comments` : `📚 Reading List`}
+              style={{ ...s.tab(profileTab === tab), flex: 1 }}>
+              {tab === "comments" ? "💬 Comments" : "📚 Reading List"}
             </button>
           ))}
         </div>
-
-        {/* Comments Tab */}
         {profileTab === "comments" && <>
           {myCommentsLoading && <div style={s.muted}>Loading...</div>}
           {!myCommentsLoading && myComments.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>You haven't commented yet 🌱</div>}
           {myComments.map(c => (
             <div key={c.id} style={s.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <div>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span>
-                  <span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span>
-                </div>
+                <div><span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span><span style={{ ...s.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span></div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
                   <button onClick={() => deleteComment(c.id, true)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>
@@ -641,8 +648,6 @@ export default function App() {
             </div>
           ))}
         </>}
-
-        {/* Reading List Tab */}
         {profileTab === "reading list" && <>
           {readingList.length === 0 && (
             <div style={{ ...s.card, textAlign: "center", color: "#aaa", padding: 40 }}>
@@ -652,7 +657,7 @@ export default function App() {
             </div>
           )}
           {readingList.map(item => (
-            <div key={item.id} style={{ ...s.bookCard, cursor: "pointer" }}
+            <div key={item.id} style={{ ...s.bookCard }}
               onClick={() => goBook({ title: item.book, author: item.author, cover: item.cover, year: "", olKey: "" })}>
               {item.cover ? <img src={item.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                 : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
@@ -664,7 +669,6 @@ export default function App() {
             </div>
           ))}
         </>}
-
       </div>
       <Footer />
     </div>
@@ -672,28 +676,7 @@ export default function App() {
 
   return (
     <div style={s.wrap}>
-      <div style={s.header}>
-        <Logo onClick={() => setPage("home")} />
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => { setPage("notifications"); fetchNotifications(); }}
-            style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
-            🩷
-            {unreadCount > 0 && (
-              <span style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => { setPage("profile"); fetchMyComments(); fetchReadingList(); }}>
-            {avatar ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-              : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "#fff", fontWeight: 700 }}>{username[0]?.toUpperCase()}</div>}
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-          </div>
-          <button onClick={signOut} style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
-          {isAdmin && <button onClick={() => { setAdminPage(true); fetchPending(); }} style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>⚙</button>}
-        </div>
-      </div>
-
+      <MainHeader />
       {showPWABanner && (
         <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -709,7 +692,6 @@ export default function App() {
       )}
 
       <div style={s.body}>
-
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
@@ -779,7 +761,6 @@ export default function App() {
               )}
             </div>
           </div>
-
           {bookDesc && (
             <div style={{ ...s.card, background: "#fff8fb", borderColor: "#fce7f3", marginBottom: 24 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>About this book</div>
@@ -793,7 +774,6 @@ export default function App() {
               )}
             </div>
           )}
-
           {topChapters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <div style={s.label}>Most discussed chapters</div>
@@ -810,7 +790,6 @@ export default function App() {
               </div>
             </div>
           )}
-
           <div style={s.label}>All chapters</div>
           {Array.from({ length: 50 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
@@ -937,7 +916,6 @@ export default function App() {
             </div>
           ))}
         </>}
-
       </div>
       <Footer />
     </div>
