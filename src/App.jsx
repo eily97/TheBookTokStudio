@@ -733,9 +733,22 @@ export default function App() {
 
         {page === "comments" && <>
           <button style={s.back} onClick={() => setPage("book")}>← Back</button>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
-            <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
+          <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
+              <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
+            </div>
+            <button onClick={() => {
+              const url = `${window.location.origin}?book=${encodeURIComponent(book.title)}&chapter=${chapter}`;
+              if (navigator.share) {
+                navigator.share({ title: `${book.title} — Chapter ${chapter}`, text: `Check out the thoughts on Chapter ${chapter} of ${book.title} on ThatPart!`, url });
+              } else {
+                navigator.clipboard.writeText(url);
+                alert("Link copied!");
+              }
+            }} style={{ background: "#fce7f3", border: "none", borderRadius: 10, padding: "8px 14px", color: "#db2777", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+              Share 🔗
+            </button>
           </div>
           <button onClick={getAI} disabled={aiLoading} style={s.btnFull("#fff8fb", "#db2777")}>
             {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
