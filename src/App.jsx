@@ -94,7 +94,9 @@ export default function App() {
   const [suggestChapter, setSuggestChapter] = useState(null);
   const [suggestText, setSuggestText] = useState("");
   const [suggestSent, setSuggestSent] = useState({});
-  const [adminPage, setAdminPage] = useState(false);
+  const [postSuccess, setPostSuccess] = useState(false);
+
+
   const [pendingSuggestions, setPendingSuggestions] = useState([]);
   const [myComments, setMyComments] = useState([]);
   const [myCommentsLoading, setMyCommentsLoading] = useState(false);
@@ -275,6 +277,8 @@ export default function App() {
       body: JSON.stringify({ book: book.title, chapter, username, text: text.trim(), spoiler, likes: 0 }),
     });
     setText(""); setSpoiler(false);
+    setPostSuccess(true);
+    setTimeout(() => setPostSuccess(false), 3000);
     fetchComments(book, chapter);
     fetchChapterCounts(book.title);
   };
@@ -648,14 +652,15 @@ export default function App() {
             </div>
           )}
           {readingList.map(item => (
-            <div key={item.id} style={{ ...s.bookCard, cursor: "default" }}>
+            <div key={item.id} style={{ ...s.bookCard, cursor: "pointer" }}
+              onClick={() => goBook({ title: item.book, author: item.author, cover: item.cover, year: "", olKey: "" })}>
               {item.cover ? <img src={item.cover} alt="" style={{ width: 40, height: 56, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
                 : <div style={{ width: 40, height: 56, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📚</div>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{item.book}</div>
                 <div style={s.muted}>{item.author}</div>
               </div>
-              <button onClick={() => removeFromReadingList(item.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
+              <button onClick={e => { e.stopPropagation(); removeFromReadingList(item.id); }} style={{ ...s.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
             </div>
           ))}
         </>}
@@ -874,6 +879,11 @@ export default function App() {
                 <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
               </label>
               <button onClick={post} style={s.btnFull("#f472b6")}>Share</button>
+              {postSuccess && (
+                <div style={{ textAlign: "center", color: "#db2777", fontSize: 14, fontWeight: 600, marginTop: 8 }}>
+                  🩷 shared! thank you for being here
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24 }}>
