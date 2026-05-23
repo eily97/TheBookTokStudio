@@ -286,14 +286,17 @@ export default function App() {
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
     header: { borderBottom: "1px solid #e8e8e4", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
-    logo: { fontSize: 20, fontWeight: 700, color: "#1a1a1a", letterSpacing: -0.5, cursor: "pointer" },
-    dot: { width: 8, height: 8, borderRadius: "50%", background: "#4f46e5", display: "inline-block", marginRight: 6 },
+    logo: { fontSize: 20, fontWeight: 700, color: "#1a1a1a", letterSpacing: -0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 },
+    logoIcon: { width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center" },
+    logoText: { fontFamily: "Georgia,serif", fontSize: 19, fontWeight: 700, letterSpacing: -0.5 },
+    dot: { color: "#f472b6" },
     body: { maxWidth: 640, margin: "0 auto", padding: "32px 20px" },
     input: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, color: "#1a1a1a", outline: "none", boxSizing: "border-box" },
     card: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 16, marginBottom: 10 },
     bookCard: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 14, marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 },
     btn: (bg, color = "#fff") => ({ background: bg, border: "none", borderRadius: 10, padding: "10px 16px", color, fontSize: 14, fontWeight: 600, cursor: "pointer" }),
     btnFull: (bg, color = "#fff") => ({ width: "100%", background: bg, border: "none", borderRadius: 10, padding: "12px 16px", color, fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }),
+    googleBtn: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "#1a1a1a" },
     back: { background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", gap: 6, padding: 0 },
     tag: { background: "#f0f0ff", color: "#4f46e5", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600 },
     muted: { color: "#888", fontSize: 13 },
@@ -385,7 +388,33 @@ export default function App() {
     </div>
   );
 
-  const Header = () => (
+  const GoogleIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+      <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+    </svg>
+  );
+
+  const Logo = ({ onClick }) => (
+    <div style={s.logo} onClick={onClick}>
+      <div style={s.logoIcon}>
+        <svg width="20" height="20" viewBox="0 0 100 100">
+          <rect x="15" y="15" width="70" height="50" rx="4" fill="white" opacity="0.25"/>
+          <line x1="50" y1="15" x2="50" y2="65" stroke="white" stroke-width="2" opacity="0.4"/>
+          <rect x="20" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
+          <rect x="20" y="31" width="18" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="20" y="38" width="21" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="56" y="24" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
+          <rect x="56" y="31" width="16" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <rect x="56" y="38" width="20" height="3" rx="1.5" fill="white" opacity="0.5"/>
+          <text x="50" y="84" font-family="Georgia,serif" font-size="18" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" letter-spacing="1">that</text>
+        </svg>
+      </div>
+      <span style={s.logoText}>that<span style={s.dot}>part</span>.</span>
+    </div>
+  );
     <div style={s.header}>
       <span style={s.logo} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>
         <span style={s.dot}></span>ThatPart
@@ -434,8 +463,8 @@ export default function App() {
           </div>
           {!user && (
             <div style={{ ...s.card, borderColor: "#e0e0ff", background: "#f8f7ff", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 14, color: "#4f46e5" }}>Sign in to leave comments and suggest chapter names.</div>
-              <button onClick={signInWithGoogle} style={s.btn("#4f46e5")}>Sign in</button>
+            <div style={{ fontSize: 14, color: "#555", marginBottom: 16 }}>Sign in to leave comments and suggest chapter names.</div>
+              <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
             </div>
           )}
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
