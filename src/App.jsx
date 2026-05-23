@@ -294,7 +294,7 @@ export default function App() {
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
     header: { borderBottom: "1px solid #e8e8e4", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
-    body: { maxWidth: 640, margin: "0 auto", padding: "32px 20px" },
+    body: { maxWidth: 640, margin: "0 auto", padding: "24px 16px" },
     input: { width: "100%", background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "12px 16px", fontSize: 15, color: "#1a1a1a", outline: "none", boxSizing: "border-box" },
     card: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 16, marginBottom: 10 },
     bookCard: { background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 14, marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 },
@@ -423,7 +423,7 @@ export default function App() {
       {showPWABanner && (
         <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>📱</span>
+            <span style={{ fontSize: 22 }}>✨</span>
             <div>
               <div style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>Add ThatPart to your home screen</div>
               <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>Safari → Share → Add to Home Screen</div>
@@ -503,7 +503,7 @@ export default function App() {
               <div style={{ fontSize: 15, color: "#555", marginBottom: 4 }}>{book?.author}</div>
               {book?.year && <div style={s.muted}>{book.year}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                {bookTotalComments > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {bookTotalComments} comments</span>}
+                {bookTotalComments > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {bookTotalComments} {bookTotalComments === 1 ? "comment" : "comments"}</span>}
                 {topChapters.length > 0 && <span style={s.tag}>Most active: Ch. {topChapters[0][0]}</span>}
               </div>
             </div>
