@@ -807,7 +807,7 @@ export default function App() {
           )}
 
           <div style={s.label}>All chapters</div>
-          {Array.from({ length: 20 }, (_, i) => i + 1).map(ch => (
+          {Array.from({ length: 50 }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
               <div style={s.chRow}
                 onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
