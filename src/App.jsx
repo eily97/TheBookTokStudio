@@ -678,10 +678,10 @@ function AppContent() {
       <meta property="og:url" content={canonical} />
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="thatpart" />
-      <meta property="og:image" content="https://thatpart.app/og-image.svg" />
+      <meta property="og:image" content="https://thatpart.app/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta name="twitter:image" content="https://thatpart.app/og-image.svg" />
+<meta name="twitter:image" content="https://thatpart.app/og-image.png" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.desc} />
