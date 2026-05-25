@@ -1295,7 +1295,7 @@ function AppContent() {
       <Analytics />
     </div>
   );
-}
+
 
 export default function App() {
   return (
