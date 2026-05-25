@@ -271,13 +271,14 @@ function AppContent() {
     } catch {}
   };
 
-`${SUPABASE_URL}/rest/v1/rpc/search_canonical_books?q=${encodeURIComponent(q)}`    setSearch(q);
+  const handleSearch = (q) => {
+    setSearch(q);
     if (searchTimer) clearTimeout(searchTimer);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        `${SUPABASE_URL}/rest/v1/canonical_books?title=ilike.%25${encodeURIComponent(q)}%25&limit=7`
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_canonical_books?q=${encodeURIComponent(q)}`, { headers: SB });
         const canonical = await r.json();
         const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
           title: b.title,
@@ -287,7 +288,7 @@ function AppContent() {
           olKey: "",
           isCanonical: true,
         }));
-        if (canonicalResults.length >= 3) {
+        if (canonicalResults.length >= 1) {
           setSearchResults(canonicalResults);
           setSearching(false);
           return;
