@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 import { Analytics } from "@vercel/analytics/react";
+import { HelmetProvider, Helmet } from "react-helmet-async";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://fycpjuwufasvccezfuis.supabase.co";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
@@ -67,7 +68,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export default function App() {
+function AppContent() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("landing");
@@ -375,6 +376,40 @@ export default function App() {
     ? booksRead.map(b => ({ book: b, count: myComments.filter(c => c.book === b).length })).sort((a, b) => b.count - a.count)[0]
     : null;
 
+  const getSEO = () => {
+    if (page === "comments" && book && chapter) {
+      const chName = chapterNames[chapter];
+      const title = `${book.title} Chapter ${chapter}${chName ? `: ${chName}` : ""} — Reader Discussion | thatpart`;
+      const desc = `What did readers feel in Chapter ${chapter} of "${book.title}" by ${book.author}? Read spoiler-free reactions and share your own thoughts.`;
+      return { title, desc };
+    }
+    if (page === "book" && book) {
+      const title = `${book.title} by ${book.author} — Chapter by Chapter Discussions | thatpart`;
+      const desc = `Discuss "${book.title}" chapter by chapter. Spoiler-free reader reactions, feelings, and discussions for every chapter.`;
+      return { title, desc };
+    }
+    if (page === "home") {
+      return { title: "Find your book — thatpart", desc: "Search millions of books and share what you felt, chapter by chapter. Spoiler-free reader community." };
+    }
+    if (page === "profile") {
+      return { title: `${username} — thatpart`, desc: "Reader profile on thatpart." };
+    }
+    if (page === "notifications") {
+      return { title: "Notifications — thatpart", desc: "Your notifications on thatpart." };
+    }
+    return {
+      title: "thatpart — Share what you felt, chapter by chapter",
+      desc: "A free community for readers who feel too much. Share spoiler-free reactions chapter by chapter. Find readers who felt the exact same thing.",
+    };
+  };
+
+  const seo = getSEO();
+  const canonical = page === "comments" && book && chapter
+    ? `https://thatpart.app/?book=${encodeURIComponent(book.title)}&chapter=${chapter}`
+    : page === "book" && book
+    ? `https://thatpart.app/?book=${encodeURIComponent(book.title)}`
+    : "https://thatpart.app/";
+
   const s = {
     wrap: { minHeight: "100vh", background: "#fafaf8", color: "#1a1a1a", fontFamily: "'Inter','Segoe UI',sans-serif" },
     header: { borderBottom: "1px solid #e8e8e4", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff", position: "sticky", top: 0, zIndex: 10 },
@@ -447,10 +482,27 @@ export default function App() {
     </div>
   );
 
+  const SEO = () => (
+    <Helmet>
+      <title>{seo.title}</title>
+      <meta name="description" content={seo.desc} />
+      <link rel="canonical" href={canonical} />
+      <meta property="og:title" content={seo.title} />
+      <meta property="og:description" content={seo.desc} />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="thatpart" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={seo.title} />
+      <meta name="twitter:description" content={seo.desc} />
+    </Helmet>
+  );
+
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
   if (page === "landing") return (
     <div style={s.wrap}>
+      <SEO />
       <div style={s.header}>
         <Logo onClick={() => {}} />
         <div style={{ marginLeft: "auto" }}>
@@ -531,6 +583,7 @@ export default function App() {
     if (!isAdmin) { setAdminPage(false); return null; }
     return (
       <div style={s.wrap}>
+        <SEO />
         <div style={s.header}>
           <Logo onClick={() => setAdminPage(false)} />
           <span style={{ marginLeft: "auto", ...s.tag }}>Admin</span>
@@ -557,6 +610,7 @@ export default function App() {
 
   if (page === "notifications") return (
     <div style={s.wrap}>
+      <SEO />
       <div style={s.header}>
         <Logo onClick={() => setPage("home")} />
         <button onClick={() => setPage("home")} style={{ marginLeft: "auto", background: "none", border: "none", color: "#888", fontSize: 15, cursor: "pointer" }}>← Back</button>
@@ -586,6 +640,7 @@ export default function App() {
 
   if (page === "profile") return (
     <div style={s.wrap}>
+      <SEO />
       <div style={s.header}>
         <Logo onClick={() => setPage("home")} />
         <button onClick={signOut} style={{ marginLeft: "auto", background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>Sign out</button>
@@ -681,6 +736,7 @@ export default function App() {
 
   return (
     <div style={s.wrap}>
+      <SEO />
       <MainHeader />
       {showPWABanner && (
         <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
@@ -699,7 +755,7 @@ export default function App() {
       <div style={s.body}>
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: -0.5 }}>Find your book</h1>
             <div style={s.muted}>Select a chapter and share what you felt with other readers.</div>
           </div>
           <input style={s.input} placeholder="Search by title or author..." value={search} onChange={e => handleSearch(e.target.value)} />
@@ -748,10 +804,10 @@ export default function App() {
         {page === "book" && <>
           <button style={s.back} onClick={() => { setPage("home"); setBook(null); setSearch(""); setSearchResults([]); }}>← Back</button>
           <div style={{ display: "flex", gap: 20, marginBottom: 28 }}>
-            {book?.cover ? <img src={book.cover} alt="" style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
+            {book?.cover ? <img src={book.cover} alt={`${book.title} cover`} style={{ width: 90, height: 130, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
               : <div style={{ width: 90, height: 130, borderRadius: 10, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>📚</div>}
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 6, lineHeight: 1.2 }}>{book?.title}</div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, marginBottom: 6, lineHeight: 1.2 }}>{book?.title}</h1>
               <div style={{ fontSize: 15, color: "#555", marginBottom: 4 }}>{book?.author}</div>
               {book?.year && <div style={s.muted}>{book.year}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
@@ -830,7 +886,7 @@ export default function App() {
           <button style={s.back} onClick={() => setPage("book")}>← Back</button>
           <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</h1>
               <div style={s.muted}>{chapterNames[chapter] ? `Chapter ${chapter}: ${chapterNames[chapter]}` : `Chapter ${chapter}`}</div>
             </div>
             <button onClick={() => {
@@ -925,5 +981,13 @@ export default function App() {
       <Footer />
       <Analytics />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <HelmetProvider>
+      <AppContent />
+    </HelmetProvider>
   );
 }
