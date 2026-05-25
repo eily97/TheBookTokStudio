@@ -179,10 +179,11 @@ function AppContent() {
   const [trendingCovers, setTrendingCovers] = useState({});
   const [searchTimer, setSearchTimer] = useState(null);
   const [showPWABanner, setShowPWABanner] = useState(() => {
-    const isStandalone = window.navigator.standalone === true;
-    const dismissed = localStorage.getItem("pwa_dismissed");
-    return !isStandalone && !dismissed;
-  });
+  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  const dismissed = localStorage.getItem("pwa_dismissed");
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return isMobile && !isStandalone && !dismissed;
+});
   const [notifications, setNotifications] = useState([]);
   const [shareCard, setShareCard] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
