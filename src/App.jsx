@@ -273,6 +273,35 @@ function AppContent() {
 };
 
   const handleSearch = (q) => {
+  setSearch(q);
+  if (searchTimer) clearTimeout(searchTimer);
+  if (q.length < 2) { setSearchResults([]); return; }
+  setSearching(true);
+  const t = setTimeout(async () => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=5`, { headers: SB });
+      const canonical = await r.json();
+      const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
+        title: b.title,
+        author: b.author,
+        cover: b.cover_id ? `https://covers.openlibrary.org/b/id/${b.cover_id}-M.jpg` : null,
+        year: "",
+        olKey: "",
+        isCanonical: true,
+      }));
+      const openLibResults = await searchBooks(q);
+      const filtered = openLibResults.filter(b =>
+        !canonicalResults.some(c => titlesAreSimilar(c.title, b.title))
+      );
+      setSearchResults([...canonicalResults, ...filtered].slice(0, 7));
+    } catch {
+      try { setSearchResults(await searchBooks(q)); }
+      catch { setSearchResults([]); }
+    }
+    setSearching(false);
+  }, 500);
+  setSearchTimer(t);
+};
     setSearch(q);
     if (searchTimer) clearTimeout(searchTimer);
     if (q.length < 2) { setSearchResults([]); return; }
