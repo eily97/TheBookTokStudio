@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 import { Analytics } from "@vercel/analytics/react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
+import html2canvas from "html2canvas";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://fycpjuwufasvccezfuis.supabase.co";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
@@ -111,6 +112,9 @@ function AppContent() {
     return !isStandalone && !dismissed;
   });
   const [notifications, setNotifications] = useState([]);
+  const [shareCard, setShareCard] = useState(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const shareCardRef = useRef(null);
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
@@ -369,6 +373,38 @@ function AppContent() {
     setPage("book");
   };
 
+  const openShareCard = (comment) => {
+    setShareCard({
+      text: comment.text,
+      username: comment.username,
+      book: book.title,
+      author: book.author,
+      cover: book.cover,
+      chapter: chapter,
+      chapterName: chapterNames[chapter],
+    });
+  };
+
+  const downloadShareCard = async () => {
+    if (!shareCardRef.current) return;
+    setGeneratingImage(true);
+    try {
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+      const link = document.createElement("a");
+      link.download = `thatpart-${shareCard.book.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-ch${shareCard.chapter}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      alert("Could not generate image. Try again!");
+    }
+    setGeneratingImage(false);
+  };
+
   const topChapters = Object.entries(chapterCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const totalLikes = myComments.reduce((sum, c) => sum + (c.likes || 0), 0);
   const booksRead = [...new Set(myComments.map(c => c.book))];
@@ -497,6 +533,65 @@ function AppContent() {
       <meta name="twitter:description" content={seo.desc} />
     </Helmet>
   );
+
+  const ShareCardModal = () => {
+    if (!shareCard) return null;
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20, overflowY: "auto" }}
+        onClick={() => setShareCard(null)}>
+        <div onClick={e => e.stopPropagation()} style={{ maxWidth: 360, width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+          <div ref={shareCardRef} style={{
+            width: 360, height: 640, background: "linear-gradient(160deg, #fff8fb 0%, #fce7f3 60%, #fb923c 130%)",
+            borderRadius: 24, padding: 28, display: "flex", flexDirection: "column", justifyContent: "space-between",
+            fontFamily: "'Inter','Segoe UI',sans-serif", color: "#1a1a1a", position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #fb923c, #f472b6)" }} />
+              <span style={{ fontFamily: "Georgia,serif", fontSize: 17, fontWeight: 700 }}>
+                that<span style={{ color: "#db2777" }}>part</span>.
+              </span>
+            </div>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "20px 0" }}>
+              {shareCard.cover && (
+                <img src={shareCard.cover} alt="" crossOrigin="anonymous" style={{ width: 100, height: 145, borderRadius: 8, objectFit: "cover", marginBottom: 16, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }} />
+              )}
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", letterSpacing: 1, marginBottom: 8 }}>
+                CHAPTER {shareCard.chapter}{shareCard.chapterName ? ` · ${shareCard.chapterName.toUpperCase()}` : ""}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4, letterSpacing: -0.3, lineHeight: 1.2 }}>
+                {shareCard.book}
+              </div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 20 }}>
+                by {shareCard.author}
+              </div>
+              <div style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: "#1a1a1a", padding: "0 8px", fontWeight: 500 }}>
+                "{shareCard.text.length > 180 ? shareCard.text.slice(0, 180) + "..." : shareCard.text}"
+              </div>
+              <div style={{ marginTop: 14, fontSize: 12, color: "#888", fontWeight: 600 }}>
+                — @{shareCard.username}
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", fontSize: 11, color: "#888", letterSpacing: 0.5, fontWeight: 600 }}>
+              JOIN THE CONVERSATION · THATPART.APP
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+            <button onClick={downloadShareCard} disabled={generatingImage}
+              style={{ flex: 1, background: "linear-gradient(135deg, #fb923c, #f472b6)", border: "none", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              {generatingImage ? "Generating..." : "Download image 🩷"}
+            </button>
+            <button onClick={() => setShareCard(null)}
+              style={{ background: "rgba(255,255,255,0.95)", border: "none", borderRadius: 12, padding: "14px 20px", color: "#1a1a1a", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
 
@@ -737,6 +832,7 @@ function AppContent() {
   return (
     <div style={s.wrap}>
       <SEO />
+      <ShareCardModal />
       <MainHeader />
       {showPWABanner && (
         <div style={{ background: "linear-gradient(135deg, #fb923c, #f472b6)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
@@ -948,9 +1044,12 @@ function AppContent() {
                     {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
                     {c.text}
                   </div>}
-              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+              <div style={{ display: "flex", gap: 12, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>🤍 {c.likes} felt the same</button>
                 {user && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>💬 Reply</button>}
+                {!c.spoiler && (
+                  <button onClick={() => openShareCard(c)} style={{ background: "none", border: "none", color: "#db2777", cursor: "pointer", fontSize: 13, padding: 0, fontWeight: 600 }}>📤 Share as image</button>
+                )}
               </div>
               {(replies[c.id] || []).length > 0 && (
                 <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #fce7f3" }}>
