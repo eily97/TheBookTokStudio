@@ -459,11 +459,18 @@ function AppContent() {
   };
 
   const submitSuggestion = async (ch) => {
-    if (!suggestText.trim() || !user) return;
-    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, { method: "POST", headers: SB, body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }) });
-    setSuggestSent(p => ({ ...p, [ch]: true }));
-    setSuggestText(""); setSuggestChapter(null);
-  };
+  if (!suggestText.trim() || !user) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, { method: "POST", headers: SB, body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }) });
+  try {
+    await fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username }),
+    });
+  } catch {}
+  setSuggestSent(p => ({ ...p, [ch]: true }));
+  setSuggestText(""); setSuggestChapter(null);
+};
 
   const fetchPending = async () => {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
