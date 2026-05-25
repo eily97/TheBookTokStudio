@@ -237,24 +237,40 @@ function AppContent() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
-  const fetchTrending = async () => {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=200`, { headers: SB });
-      const d = await r.json();
-      if (!Array.isArray(d)) return;
-      const counts = {};
-      d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      setTrending(sorted);
-      sorted.forEach(async ([title]) => {
-        try {
-          const results = await searchBooks(title);
-          const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
-          if (match) setTrendingCovers(prev => ({ ...prev, [title]: { cover: match.cover, author: match.author } }));
-        } catch {}
-      });
-    } catch {}
-  };
+ const fetchTrending = async () => {
+  const cacheKey = "trending_cache";
+  const cacheTTL = 30 * 60 * 1000;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < cacheTTL) {
+        setTrending(data.trending);
+        setTrendingCovers(data.covers);
+        return;
+      }
+    }
+  } catch {}
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=200`, { headers: SB });
+    const d = await r.json();
+    if (!Array.isArray(d)) return;
+    const counts = {};
+    d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    setTrending(sorted);
+    const covers = {};
+    await Promise.all(sorted.map(async ([title]) => {
+      try {
+        const results = await searchBooks(title);
+        const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
+        if (match) covers[title] = { cover: match.cover, author: match.author };
+      } catch {}
+    }));
+    setTrendingCovers(covers);
+    localStorage.setItem(cacheKey, JSON.stringify({ data: { trending: sorted, covers }, timestamp: Date.now() }));
+  } catch {}
+};
 
   const handleSearch = (q) => {
     setSearch(q);
