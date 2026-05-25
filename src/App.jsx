@@ -103,7 +103,17 @@ const fetchBookDescription = async (title, author) => {
   return null;
 };
 
-const checkRateLimit = (username) => {
+const checkRateLimit = (username) => {const BLOCKED_WORDS = [
+  "fuck", "shit", "bitch", "asshole", "cunt", "damn", "bastard", "dick", "pussy", "faggot",
+  "nigger", "retard", "whore", "slut", "motherfucker", "fuckoff", "bullshit",
+  "sik", "orospu", "göt", "yarrak", "amk", "amına", "oç", "piç", "salak", "gerizekalı",
+  "aptal", "bok", "siktir", "orospu çocuğu", "kahpe", "ibne"
+];
+
+const containsProfanity = (text) => {
+  const lower = text.toLowerCase();
+  return BLOCKED_WORDS.some(word => lower.includes(word));
+};
   const key = `rl_${username}`;
   const now = Date.now();
   const raw = localStorage.getItem(key);
@@ -374,6 +384,10 @@ function AppContent() {
   const post = async () => {
     if (!text.trim() || !user) return;
     setRateLimitError(null);
+    if (containsProfanity(text)) {
+  alert("Your comment contains inappropriate language. Please keep it respectful 🩷");
+  return;
+}
     const rl = checkRateLimit(username);
     if (!rl.allowed) {
       setRateLimitError(`You've reached the limit of ${RATE_LIMIT} comments per hour. Try again in ${rl.resetIn} minute${rl.resetIn !== 1 ? "s" : ""}.`);
