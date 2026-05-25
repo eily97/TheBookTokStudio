@@ -764,7 +764,29 @@ function AppContent() {
     );
   };
 
-  if (authLoading) return <div style={{ ...s.wrap, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>Loading...</div>;
+   if (authLoading) return (
+  <div style={{ minHeight: "100vh", background: "#fafaf8", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ borderBottom: "1px solid #e8e8e4", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff" }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)" }} />
+      <div style={{ width: 80, height: 20, borderRadius: 6, background: "#f0f0f0" }} />
+      <div style={{ marginLeft: "auto", width: 60, height: 32, borderRadius: 8, background: "#f0f0f0" }} />
+    </div>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ width: 200, height: 32, borderRadius: 8, background: "#f0f0f0", marginBottom: 12 }} />
+      <div style={{ width: 300, height: 20, borderRadius: 6, background: "#f0f0f0", marginBottom: 32 }} />
+      <div style={{ width: "100%", height: 48, borderRadius: 10, background: "#f0f0f0", marginBottom: 24 }} />
+      {[1,2,3].map(i => (
+        <div key={i} style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0f0", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ width: "60%", height: 16, borderRadius: 4, background: "#f0f0f0", marginBottom: 8 }} />
+            <div style={{ width: "40%", height: 13, borderRadius: 4, background: "#f0f0f0" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
   if (page === "landing") return (
     <div style={s.wrap}>
