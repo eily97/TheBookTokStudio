@@ -51,7 +51,6 @@ const searchBooks = async (q) => {
   ]);
   const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
   const all = [...(d1.docs || []), ...(d2.docs || [])];
-
   const candidates = all.filter(b => {
     const title = b.title?.trim();
     const author = b.author_name?.[0]?.trim();
@@ -65,7 +64,6 @@ const searchBooks = async (q) => {
     year: b.first_publish_year || "",
     olKey: b.key || "",
   }));
-
   const deduped = [];
   for (const candidate of candidates) {
     const isDuplicate = deduped.some(existing =>
@@ -83,7 +81,6 @@ const searchBooks = async (q) => {
       if (deduped.length >= 7) break;
     }
   }
-
   return deduped;
 };
 
@@ -103,17 +100,19 @@ const fetchBookDescription = async (title, author) => {
   return null;
 };
 
-const checkRateLimit = (username) => {const BLOCKED_WORDS = [
+const BLOCKED_WORDS = [
   "fuck", "shit", "bitch", "asshole", "cunt", "damn", "bastard", "dick", "pussy", "faggot",
   "nigger", "retard", "whore", "slut", "motherfucker", "fuckoff", "bullshit",
-  "sik", "orospu", "göt", "yarrak", "amk", "amına", "oç", "piç", "salak", "gerizekalı",
-  "aptal", "bok", "siktir", "orospu çocuğu", "kahpe", "ibne"
+  "sik", "orospu", "yarrak", "amk", "amına", "piç", "gerizekalı",
+  "bok", "siktir", "kahpe", "ibne"
 ];
 
 const containsProfanity = (text) => {
   const lower = text.toLowerCase();
   return BLOCKED_WORDS.some(word => lower.includes(word));
 };
+
+const checkRateLimit = (username) => {
   const key = `rl_${username}`;
   const now = Date.now();
   const raw = localStorage.getItem(key);
@@ -179,11 +178,11 @@ function AppContent() {
   const [trendingCovers, setTrendingCovers] = useState({});
   const [searchTimer, setSearchTimer] = useState(null);
   const [showPWABanner, setShowPWABanner] = useState(() => {
-  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
-  const dismissed = localStorage.getItem("pwa_dismissed");
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  return isMobile && !isStandalone && !dismissed;
-});
+    const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+    const dismissed = localStorage.getItem("pwa_dismissed");
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    return isMobile && !isStandalone && !dismissed;
+  });
   const [notifications, setNotifications] = useState([]);
   const [shareCard, setShareCard] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -237,78 +236,67 @@ function AppContent() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
- const fetchTrending = async () => {
-  const cacheKey = "trending_cache";
-  const cacheTTL = 30 * 60 * 1000;
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < cacheTTL) {
-        setTrending(data.trending);
-        setTrendingCovers(data.covers);
-        return;
+  const fetchTrending = async () => {
+    const cacheKey = "trending_cache";
+    const cacheTTL = 30 * 60 * 1000;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < cacheTTL) {
+          setTrending(data.trending);
+          setTrendingCovers(data.covers);
+          return;
+        }
       }
-    }
-  } catch {}
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=200`, { headers: SB });
-    const d = await r.json();
-    if (!Array.isArray(d)) return;
-    const counts = {};
-    d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    setTrending(sorted);
-    const covers = {};
-    await Promise.all(sorted.map(async ([title]) => {
-      try {
-        const results = await searchBooks(title);
-        const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
-        if (match) covers[title] = { cover: match.cover, author: match.author };
-      } catch {}
-    }));
-    setTrendingCovers(covers);
-    localStorage.setItem(cacheKey, JSON.stringify({ data: { trending: sorted, covers }, timestamp: Date.now() }));
-  } catch {}
-};
+    } catch {}
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=200`, { headers: SB });
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+      const counts = {};
+      d.forEach(c => { counts[c.book] = (counts[c.book] || 0) + 1; });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      setTrending(sorted);
+      const covers = {};
+      await Promise.all(sorted.map(async ([title]) => {
+        try {
+          const results = await searchBooks(title);
+          const match = results.find(b => b.title.toLowerCase() === title.toLowerCase()) || results[0];
+          if (match) covers[title] = { cover: match.cover, author: match.author };
+        } catch {}
+      }));
+      setTrendingCovers(covers);
+      localStorage.setItem(cacheKey, JSON.stringify({ data: { trending: sorted, covers }, timestamp: Date.now() }));
+    } catch {}
+  };
 
   const handleSearch = (q) => {
-  setSearch(q);
-  if (searchTimer) clearTimeout(searchTimer);
-  if (q.length < 2) { setSearchResults([]); return; }
-  setSearching(true);
-  const t = setTimeout(async () => {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=5`, { headers: SB });
-      const canonical = await r.json();
-      const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
-        title: b.title,
-        author: b.author,
-        cover: b.cover_id ? `https://covers.openlibrary.org/b/id/${b.cover_id}-M.jpg` : null,
-        year: "",
-        olKey: "",
-        isCanonical: true,
-      }));
-      const openLibResults = await searchBooks(q);
-      const filtered = openLibResults.filter(b =>
-        !canonicalResults.some(c => titlesAreSimilar(c.title, b.title))
-      );
-      setSearchResults([...canonicalResults, ...filtered].slice(0, 7));
-    } catch {
-      try { setSearchResults(await searchBooks(q)); }
-      catch { setSearchResults([]); }
-    }
-    setSearching(false);
-  }, 500);
-  setSearchTimer(t);
-};
     setSearch(q);
     if (searchTimer) clearTimeout(searchTimer);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     const t = setTimeout(async () => {
-      try { setSearchResults(await searchBooks(q)); }
-      catch { setSearchResults([]); }
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=5`, { headers: SB });
+        const canonical = await r.json();
+        const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
+          title: b.title,
+          author: b.author,
+          cover: b.cover_id ? `https://covers.openlibrary.org/b/id/${b.cover_id}-M.jpg` : null,
+          year: "",
+          olKey: "",
+          isCanonical: true,
+        }));
+        const openLibResults = await searchBooks(q);
+        const filtered = openLibResults.filter(b =>
+          !canonicalResults.some(c => titlesAreSimilar(c.title, b.title))
+        );
+        setSearchResults([...canonicalResults, ...filtered].slice(0, 7));
+      } catch {
+        try { setSearchResults(await searchBooks(q)); }
+        catch { setSearchResults([]); }
+      }
       setSearching(false);
     }, 500);
     setSearchTimer(t);
@@ -431,9 +419,9 @@ function AppContent() {
     if (!text.trim() || !user) return;
     setRateLimitError(null);
     if (containsProfanity(text)) {
-  alert("Your comment contains inappropriate language. Please keep it respectful 🩷");
-  return;
-}
+      alert("Your comment contains inappropriate language. Please keep it respectful 🩷");
+      return;
+    }
     const rl = checkRateLimit(username);
     if (!rl.allowed) {
       setRateLimitError(`You've reached the limit of ${RATE_LIMIT} comments per hour. Try again in ${rl.resetIn} minute${rl.resetIn !== 1 ? "s" : ""}.`);
@@ -488,18 +476,18 @@ function AppContent() {
   };
 
   const submitSuggestion = async (ch) => {
-  if (!suggestText.trim() || !user) return;
-  await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, { method: "POST", headers: SB, body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }) });
-  try {
-    await fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username }),
-    });
-  } catch {}
-  setSuggestSent(p => ({ ...p, [ch]: true }));
-  setSuggestText(""); setSuggestChapter(null);
-};
+    if (!suggestText.trim() || !user) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/chapter_names`, { method: "POST", headers: SB, body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username, status: "pending" }) });
+    try {
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: book.title, chapter: ch, name: suggestText.trim(), suggested_by: username }),
+      });
+    } catch {}
+    setSuggestSent(p => ({ ...p, [ch]: true }));
+    setSuggestText(""); setSuggestChapter(null);
+  };
 
   const fetchPending = async () => {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`, { headers: SB });
@@ -708,12 +696,12 @@ function AppContent() {
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="thatpart" />
       <meta property="og:image" content="https://thatpart.app/og-image.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta name="twitter:image" content="https://thatpart.app/og-image.png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.desc} />
+      <meta name="twitter:image" content="https://thatpart.app/og-image.png" />
       <meta name="google-site-verification" content="tl8FQnHwLZsDIFlwHSPSgTDjh0g8Sm4C893F_HWoqBQ" />
     </Helmet>
   );
@@ -764,29 +752,29 @@ function AppContent() {
     );
   };
 
-   if (authLoading) return (
-  <div style={{ minHeight: "100vh", background: "#fafaf8", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
-    <div style={{ borderBottom: "1px solid #e8e8e4", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff" }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)" }} />
-      <div style={{ width: 80, height: 20, borderRadius: 6, background: "#f0f0f0" }} />
-      <div style={{ marginLeft: "auto", width: 60, height: 32, borderRadius: 8, background: "#f0f0f0" }} />
-    </div>
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ width: 200, height: 32, borderRadius: 8, background: "#f0f0f0", marginBottom: 12 }} />
-      <div style={{ width: 300, height: 20, borderRadius: 6, background: "#f0f0f0", marginBottom: 32 }} />
-      <div style={{ width: "100%", height: 48, borderRadius: 10, background: "#f0f0f0", marginBottom: 24 }} />
-      {[1,2,3].map(i => (
-        <div key={i} style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0f0", flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ width: "60%", height: 16, borderRadius: 4, background: "#f0f0f0", marginBottom: 8 }} />
-            <div style={{ width: "40%", height: 13, borderRadius: 4, background: "#f0f0f0" }} />
+  if (authLoading) return (
+    <div style={{ minHeight: "100vh", background: "#fafaf8", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      <div style={{ borderBottom: "1px solid #e8e8e4", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff" }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)" }} />
+        <div style={{ width: 80, height: 20, borderRadius: 6, background: "#f0f0f0" }} />
+        <div style={{ marginLeft: "auto", width: 60, height: 32, borderRadius: 8, background: "#f0f0f0" }} />
+      </div>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}>
+        <div style={{ width: 200, height: 32, borderRadius: 8, background: "#f0f0f0", marginBottom: 12 }} />
+        <div style={{ width: 300, height: 20, borderRadius: 6, background: "#f0f0f0", marginBottom: 32 }} />
+        <div style={{ width: "100%", height: 48, borderRadius: 10, background: "#f0f0f0", marginBottom: 24 }} />
+        {[1,2,3].map(i => (
+          <div key={i} style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 12, padding: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 56, borderRadius: 6, background: "#f0f0f0", flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ width: "60%", height: 16, borderRadius: 4, background: "#f0f0f0", marginBottom: 8 }} />
+              <div style={{ width: "40%", height: 13, borderRadius: 4, background: "#f0f0f0" }} />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
 
   if (page === "landing") return (
     <div style={s.wrap}>
@@ -1031,7 +1019,6 @@ function AppContent() {
             style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>✕</button>
         </div>
       )}
-
       <div style={s.body}>
         {page === "home" && <>
           <div style={{ marginBottom: 32 }}>
@@ -1295,7 +1282,7 @@ function AppContent() {
       <Analytics />
     </div>
   );
-
+}
 
 export default function App() {
   return (
