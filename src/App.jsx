@@ -681,6 +681,7 @@ function AppContent() {
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.desc} />
+      <meta name="google-site-verification" content="tl8FQnHwLZsDIFlwHSPSgTDjh0g8Sm4C893F_HWoqBQ" />
     </Helmet>
   );
 
