@@ -278,7 +278,7 @@ function AppContent() {
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        `${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.%25${encodeURIComponent(q)}%25,author.ilike.%25${encodeURIComponent(q)}%25)&limit=5`
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.%25${encodeURIComponent(q)}%25,author.ilike.%25${encodeURIComponent(q)}%25)&order=title&limit=7`, { headers: SB });
         const canonical = await r.json();
         const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
           title: b.title,
@@ -288,6 +288,11 @@ function AppContent() {
           olKey: "",
           isCanonical: true,
         }));
+        if (canonicalResults.length >= 3) {
+          setSearchResults(canonicalResults);
+          setSearching(false);
+          return;
+        }
         const openLibResults = await searchBooks(q);
         const filtered = openLibResults.filter(b =>
           !canonicalResults.some(c => titlesAreSimilar(c.title, b.title))
