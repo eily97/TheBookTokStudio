@@ -278,7 +278,7 @@ function AppContent() {
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/canonical_books?or=(title.ilike.%25${encodeURIComponent(q)}%25,author.ilike.%25${encodeURIComponent(q)}%25)&order=title&limit=7`, { headers: SB });
+        `${SUPABASE_URL}/rest/v1/canonical_books?title=ilike.%25${encodeURIComponent(q)}%25&limit=7`
         const canonical = await r.json();
         const canonicalResults = (Array.isArray(canonical) ? canonical : []).map(b => ({
           title: b.title,
