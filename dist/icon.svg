@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Arka plan -->
+  <rect width="100" height="100" rx="22" fill="url(#g)"/>
+
+  <!-- Kitap gövdesi -->
+  <rect x="18" y="18" width="64" height="46" rx="4" fill="white" opacity="0.2"/>
+  <rect x="18" y="18" width="64" height="46" rx="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.35"/>
+  <!-- Kitap ortası çizgisi -->
+  <line x1="50" y1="18" x2="50" y2="64" stroke="white" stroke-width="1.5" opacity="0.35"/>
+  <!-- Sol sayfa satırları -->
+  <rect x="24" y="27" width="20" height="2.5" rx="1.25" fill="white" opacity="0.55"/>
+  <rect x="24" y="33" width="15" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="24" y="39" width="18" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="24" y="45" width="12" height="2.5" rx="1.25" fill="white" opacity="0.35"/>
+  <!-- Sağ sayfa satırları -->
+  <rect x="56" y="27" width="20" height="2.5" rx="1.25" fill="white" opacity="0.55"/>
+  <rect x="56" y="33" width="14" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="56" y="39" width="18" height="2.5" rx="1.25" fill="white" opacity="0.45"/>
+  <rect x="56" y="45" width="10" height="2.5" rx="1.25" fill="white" opacity="0.35"/>
+
+  <!-- "that" yazısı -->
+  <text x="50" y="78" font-family="Georgia,serif" font-size="16" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" letter-spacing="1.5">that</text>
+  <!-- "part." yazısı -->
+  <text x="50" y="91" font-family="Georgia,serif" font-size="9" fill="white" text-anchor="middle" dominant-baseline="middle" opacity="0.75" letter-spacing="1">part.</text>
+</svg>
