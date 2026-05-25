@@ -271,8 +271,7 @@ function AppContent() {
     } catch {}
   };
 
-  const handleSearch = (q) => {
-    setSearch(q);
+`${SUPABASE_URL}/rest/v1/rpc/search_canonical_books?q=${encodeURIComponent(q)}`    setSearch(q);
     if (searchTimer) clearTimeout(searchTimer);
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
