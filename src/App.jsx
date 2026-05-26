@@ -1314,7 +1314,7 @@ function AppContent() {
             <div style={s.card}>
               <div style={s.label}>What did you feel?</div>
               <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Share your thoughts while reading this chapter..."
-                style={{ ...s.input, resize: "none", minHeight: 100, marginBottom: 10 }} />
+                style={{ ...s.input, resize: "none", minHeight: 120, marginBottom: 10 }}
               <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
                 <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
               </label>
