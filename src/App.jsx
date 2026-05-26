@@ -4,9 +4,9 @@ import { Analytics } from "@vercel/analytics/react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import html2canvas from "html2canvas";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://fycpjuwufasvccezfuis.supabase.co";
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y3BqdXd1ZmFzdmNjZXpmdWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzUwNTQsImV4cCI6MjA5NTAxMTA1NH0.-2U8vWzNwtg5xvoAESiii9d2YU6xXrfaIbKvHb0yLKo";
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "yarenpekgil97@gmail.com";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
