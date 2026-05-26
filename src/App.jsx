@@ -1196,4 +1196,213 @@ function AppContent() {
                   {/* Suggest name form for unknown-count chapters */}
                   {suggestChapter && (
                     <div style={{ ...s.card, marginTop: -4, marginBottom: 8 }}>
-                      <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {suggest
+                      <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {suggestChapter}:</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening" value={suggestText} onChange={e => setSuggestText(e.target.value)} />
+                        <button style={s.btn("#f472b6")} onClick={() => submitSuggestion(suggestChapter)}>Send</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Single clean input — accepts number or name */}
+              <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", padding: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Which chapter are you on?</div>
+                <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>Enter a number (e.g. 12) or a name (e.g. Prologue)</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    style={{ ...s.input, flex: 1 }}
+                    placeholder="12 or Prologue"
+                    value={chapterInput}
+                    onChange={e => setChapterInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") goChapterFromInput(); }}
+                  />
+                  <button style={s.btn("#f472b6")} onClick={goChapterFromInput}>Go →</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Known chapter count — full chapter list */}
+          {!chaptersLoading && totalChapters !== null && Array.from({ length: totalChapters }, (_, i) => i + 1).map(ch => (
+            <div key={ch}>
+              <div style={s.chRow}
+                onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
+                onMouseOut={e => e.currentTarget.style.borderColor = "#e8e8e4"}
+                onClick={() => goChapter(ch)}>
+                <span style={{ ...s.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
+                <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>{chapterNames[ch] || <span style={{ color: "#bbb" }}>Chapter {ch}</span>}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {chapterCounts[ch] > 0 && <span style={{ ...s.tag, background: "#fff8f0", color: "#b45309" }}>💬 {chapterCounts[ch]}</span>}
+                  {user && !chapterNames[ch] && !suggestSent[ch] && (
+                    <button onClick={e => { e.stopPropagation(); setSuggestChapter(ch === suggestChapter ? null : ch); }}
+                      style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 6, padding: "4px 8px", fontSize: 11, color: "#888", cursor: "pointer" }}>+ Name</button>
+                  )}
+                  {suggestSent[ch] && <span style={{ fontSize: 11, color: "#db2777" }}>Sent ✓</span>}
+                </div>
+              </div>
+              {suggestChapter === ch && (
+                <div style={{ ...s.card, marginTop: -4, marginBottom: 8 }}>
+                  <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for Chapter {ch}:</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening" value={suggestText} onChange={e => setSuggestText(e.target.value)} />
+                    <button style={s.btn("#f472b6")} onClick={() => submitSuggestion(ch)}>Send</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </>}
+
+        {page === "comments" && <>
+          <button style={s.back} onClick={() => setPage("book")}>← Back</button>
+          <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{book?.title}</h1>
+              <div style={s.muted}>
+                {chapterNames[chapter]
+                  ? `${isNaN(+chapter) ? "" : `Chapter ${chapter}: `}${chapterNames[chapter]}`
+                  : `Chapter ${chapter}`}
+              </div>
+            </div>
+            <button onClick={() => {
+              const url = `https://thatpart.app/?book=${encodeURIComponent(book.title)}&chapter=${chapter}`;
+              if (navigator.share) {
+                navigator.share({ title: `${book.title} — Chapter ${chapter}`, text: `Check out the thoughts on Chapter ${chapter} of "${book.title}" on ThatPart!`, url });
+              } else {
+                navigator.clipboard.writeText(url);
+                alert("Link copied! 🔗");
+              }
+            }} style={{ background: "#fce7f3", border: "none", borderRadius: 10, padding: "8px 14px", color: "#db2777", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+              Share 🔗
+            </button>
+          </div>
+
+          {comments.length > 0 && (
+            <button onClick={() => getAI(false)} disabled={aiLoading} style={s.btnFull("#fff8fb", "#db2777")}>
+              {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
+            </button>
+          )}
+          {aiText && (
+            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#db2777", marginBottom: 8, letterSpacing: 0.5 }}>AI Summary</div>
+              <div style={{ fontSize: 15, lineHeight: 1.7, color: "#333" }}>{aiText}</div>
+            </div>
+          )}
+
+          {user && !chapterNames[chapter] && !suggestSent[chapter] && (
+            <div style={{ marginBottom: 16 }}>
+              {suggestChapter === chapter ? (
+                <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb" }}>
+                  <div style={{ ...s.muted, marginBottom: 8 }}>Suggest a name for this chapter:</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input style={{ ...s.input, flex: 1 }} placeholder="e.g. The Awakening" value={suggestText} onChange={e => setSuggestText(e.target.value)} />
+                    <button style={s.btn("#f472b6")} onClick={() => submitSuggestion(chapter)}>Send</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setSuggestChapter(chapter)}
+                  style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 12, color: "#888", cursor: "pointer" }}>
+                  + Name this chapter
+                </button>
+              )}
+              {suggestSent[chapter] && <span style={{ fontSize: 12, color: "#db2777", marginLeft: 8 }}>Sent ✓</span>}
+            </div>
+          )}
+
+          {user ? (
+            <div style={s.card}>
+              <div style={s.label}>What did you feel?</div>
+              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Share your thoughts while reading this chapter..."
+                style={{ ...s.input, resize: "none", minHeight: 100, marginBottom: 10 }} />
+              <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 14, marginBottom: 12, cursor: "pointer" }}>
+                <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Contains spoiler
+              </label>
+              {rateLimitError && (
+                <div style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 13, marginBottom: 10 }}>
+                  ⏳ {rateLimitError}
+                </div>
+              )}
+              <button onClick={post} style={s.btnFull("#f472b6")}>Share</button>
+              {postSuccess && (
+                <div style={{ textAlign: "center", color: "#db2777", fontSize: 14, fontWeight: 600, marginTop: 8 }}>
+                  🩷 shared! thank you for being here
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24 }}>
+              <div style={{ fontSize: 15, color: "#555", marginBottom: 12 }}>Sign in to share your thoughts</div>
+              <button onClick={signInWithGoogle} style={s.googleBtn}><GoogleIcon /> Continue with Google</button>
+            </div>
+          )}
+          <div style={{ ...s.label, marginTop: 24 }}>{loading ? "Loading..." : `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`}</div>
+          {!loading && comments.length === 0 && (
+            <div style={{ ...s.card, textAlign: "center", padding: 32, background: "linear-gradient(135deg, #fff8fb, #fafaf8)", borderColor: "#fce7f3" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Be the first to share your thoughts</div>
+              <div style={{ ...s.muted, marginBottom: 16, lineHeight: 1.5 }}>Nobody has commented on this chapter yet. {user ? "Start the conversation 🩷" : "Sign in to start the conversation."}</div>
+            </div>
+          )}
+          {comments.map(c => (
+            <div key={c.id} style={s.card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: "#db2777" }}>@{c.username}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={s.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
+                  {user && c.username === username && <button onClick={() => deleteComment(c.id)} style={{ ...s.iconBtn, color: "#f87171" }}>🗑</button>}
+                </div>
+              </div>
+              {c.spoiler && !revealed[c.id]
+                ? <div onClick={() => setRevealed(r => ({ ...r, [c.id]: true }))} style={{ background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 14, cursor: "pointer", textAlign: "center" }}>⚠️ Spoiler — click to reveal</div>
+                : <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
+                    {c.spoiler && <span style={{ background: "#fff8f0", color: "#b45309", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginRight: 6 }}>SPOILER</span>}
+                    {c.text}
+                  </div>}
+              <div style={{ display: "flex", gap: 12, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+                {c.likes > 0
+                  ? <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>🤍 {c.likes} felt the same</button>
+                  : <button onClick={() => like(c)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>🤍 felt the same</button>
+                }
+                {user && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, padding: 0 }}>💬 Reply</button>}
+                {!c.spoiler && <button onClick={() => openShareCard(c)} style={{ background: "none", border: "none", color: "#db2777", cursor: "pointer", fontSize: 13, padding: 0, fontWeight: 600 }}>📤 Share as image</button>}
+              </div>
+              {(replies[c.id] || []).length > 0 && (
+                <div style={{ marginTop: 12, paddingLeft: 16, borderLeft: "2px solid #fce7f3" }}>
+                  {(replies[c.id] || []).map(r => (
+                    <div key={r.id} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 12, color: "#db2777" }}>@{r.username}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ ...s.muted, fontSize: 11 }}>{new Date(r.created_at).toLocaleDateString("en-US")}</span>
+                          {user && r.username === username && <button onClick={() => deleteReply(r.id)} style={{ ...s.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>{r.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {replyTo === c.id && (
+                <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                  <input style={{ ...s.input, flex: 1, padding: "8px 12px", fontSize: 14 }} placeholder="Write a reply..." value={replyText} onChange={e => setReplyText(e.target.value)} />
+                  <button style={s.btn("#f472b6")} onClick={() => postReply(c.id)}>Send</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </>}
+      </div>
+      <Footer />
+      <Analytics />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <HelmetProvider>
+      <AppContent />
+    </HelmetProvider>
+  );
+}
