@@ -1126,10 +1126,11 @@ function AppContent() {
           )}
           {!chaptersLoading && totalChapters === null && (
   <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24, marginBottom: 16 }}>
-    <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>How many chapters does this book have?</div>
+    <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>Which chapter are you on?</div>
+    <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Jump straight to your chapter and share what you felt.</div>
     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-      <input type="number" style={{ ...s.input, width: 120 }} placeholder="e.g. 32" value={suggestedChapterCount} onChange={e => setSuggestedChapterCount(e.target.value)} />
-      <button style={s.btn("#f472b6")} onClick={submitChapterCountSuggestion}>Submit</button>
+      <input type="number" style={{ ...s.input, width: 120 }} placeholder="e.g. 12" value={suggestedChapterCount} onChange={e => setSuggestedChapterCount(e.target.value)} />
+      <button style={s.btn("#f472b6")} onClick={() => { const num = parseInt(suggestedChapterCount); if (num && num > 0) goChapter(num); }}>Go →</button>
     </div>
   </div>
 )}
