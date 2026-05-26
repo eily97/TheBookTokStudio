@@ -308,7 +308,7 @@ function AppContent() {
 
   const fetchTotalChapters = async (b) => {
     setChaptersLoading(true);
-    setTotalChapters(50);
+    setTotalChapters(null);
     try {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(b.title)}&select=chapter_count`, { headers: SB });
       const d = await r.json();
@@ -1101,7 +1101,13 @@ function AppContent() {
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={s.label}>{chaptersLoading ? "Loading chapters..." : `All ${totalChapters} chapters`}</div>
+            <div style={s.label}>
+  {chaptersLoading 
+    ? "Loading chapters..." 
+    : totalChapters 
+      ? `All ${totalChapters} chapters` 
+      : "Chapters"}
+</div>
             {!chaptersLoading && user && (
               <button onClick={() => setReportChapterCount(!reportChapterCount)}
                 style={{ background: "none", border: "none", color: "#aaa", fontSize: 11, cursor: "pointer", padding: 0 }}>
@@ -1118,7 +1124,16 @@ function AppContent() {
               </div>
             </div>
           )}
-          {!chaptersLoading && Array.from({ length: totalChapters }, (_, i) => i + 1).map(ch => (
+          {!chaptersLoading && totalChapters === null && (
+  <div style={{ ...s.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24, marginBottom: 16 }}>
+    <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>How many chapters does this book have?</div>
+    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+      <input type="number" style={{ ...s.input, width: 120 }} placeholder="e.g. 32" value={suggestedChapterCount} onChange={e => setSuggestedChapterCount(e.target.value)} />
+      <button style={s.btn("#f472b6")} onClick={submitChapterCountSuggestion}>Submit</button>
+    </div>
+  </div>
+)}
+{!chaptersLoading && totalChapters !== null && Array.from({ length: totalChapters }, (_, i) => i + 1).map(ch => (
             <div key={ch}>
               <div style={s.chRow}
                 onMouseOver={e => e.currentTarget.style.borderColor = "#f472b6"}
