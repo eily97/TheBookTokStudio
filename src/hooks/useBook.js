@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import * as chapApi from "../api/chapters";
+import { getChapterCounts } from "../api/comments";
 import { fetchBookDescription } from "../api/books";
 
 export const useBook = (username) => {
@@ -21,7 +22,7 @@ export const useBook = (username) => {
 
     const [namesRaw, countsRaw, metaRaw, desc] = await Promise.allSettled([
       chapApi.getApprovedChapterNames(book.title),
-      chapApi.getChapterCounts(book.title),
+      getChapterCounts(book.title),
       chapApi.getBookMetadata(book.title),
       fetchBookDescription(book.title, book.author),
     ]);
