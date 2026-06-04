@@ -1,0 +1,19 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff8fb"/>
+      <stop offset="60%" style="stop-color:#fce7f3"/>
+      <stop offset="100%" style="stop-color:#fb923c"/>
+    </linearGradient>
+    <linearGradient id="logo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#f472b6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="80" y="80" width="1040" height="470" rx="32" fill="white" opacity="0.6"/>
+  <rect x="540" y="180" width="120" height="120" rx="24" fill="url(#logo)"/>
+  <text x="600" y="380" font-family="Georgia, serif" font-size="72" font-weight="700" fill="#1a1a1a" text-anchor="middle">that<tspan fill="#f472b6">part</tspan>.</text>
+  <text x="600" y="450" font-family="Arial, sans-serif" font-size="28" fill="#666" text-anchor="middle">share what you felt, chapter by chapter</text>
+  <text x="600" y="510" font-family="Arial, sans-serif" font-size="22" fill="#db2777" text-anchor="middle" font-weight="600">thatpart.app</text>
+</svg>
