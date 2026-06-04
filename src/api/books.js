@@ -44,41 +44,23 @@ export const searchBooks = async (q) => {
   return deduped;
 };
 
-const isEnglishText = (text) => {
+const isEnglish = (text) => {
   if (!text || text.length < 30) return false;
-  // İlk 200 karakterde Latin dışı karakter varsa reddet
   if (/[^\u0000-\u024F\u1E00-\u1EFF]/.test(text.slice(0, 200))) return false;
   return true;
 };
 
-// Strateji 1: Google Books — en güvenilir İngilizce kaynak
-const fetchFromGoogleBooks = async (title, author) => {
+export const fetchBookDescription = async (title, author) => {
   try {
-    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
+    // İngilizce sonuçları önce getir
     const r = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${q}&langRestrict=en&maxResults=3&fields=items(volumeInfo(title,authors,description,language))`
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&lang=eng&limit=5&fields=key,language`
     );
     const d = await r.json();
-    const items = d.items || [];
-    for (const item of items) {
-      const desc = item.volumeInfo?.description;
-      if (isEnglishText(desc)) return desc;
-    }
-  } catch {}
-  return null;
-};
-
-// Strateji 2: OpenLibrary — tüm sonuçları tara, İngilizce olanı bul
-const fetchFromOpenLibrary = async (title, author) => {
-  try {
-    const r = await fetch(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&limit=10&fields=key,language`
-    );
-    const d = await r.json();
-    if (!d.docs?.length) return null;
+    const docs = d.docs || [];
 
     // İngilizce olanları önce sırala
-    const sorted = [...(d.docs || [])].sort((a, b) => {
+    const sorted = [...docs].sort((a, b) => {
       const aEng = a.language?.includes("eng") ? -1 : 1;
       const bEng = b.language?.includes("eng") ? -1 : 1;
       return aEng - bEng;
@@ -90,21 +72,9 @@ const fetchFromOpenLibrary = async (title, author) => {
         const d2 = await r2.json();
         const raw = d2.description;
         const text = typeof raw === "string" ? raw : raw?.value || null;
-        if (isEnglishText(text)) return text;
+        if (isEnglish(text)) return text;
       } catch {}
     }
   } catch {}
-  return null;
-};
-
-export const fetchBookDescription = async (title, author) => {
-  // Önce Google Books dene (daha hızlı ve güvenilir)
-  const googleDesc = await fetchFromGoogleBooks(title, author);
-  if (googleDesc) return googleDesc;
-
-  // Google bulamazsa OpenLibrary'yi tara
-  const olDesc = await fetchFromOpenLibrary(title, author);
-  if (olDesc) return olDesc;
-
   return null;
 };
