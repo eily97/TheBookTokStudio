@@ -52,14 +52,12 @@ const isEnglish = (text) => {
 
 export const fetchBookDescription = async (title, author) => {
   try {
-    // İngilizce sonuçları önce getir
     const r = await fetch(
       `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&lang=eng&limit=5&fields=key,language`
     );
     const d = await r.json();
     const docs = d.docs || [];
 
-    // İngilizce olanları önce sırala
     const sorted = [...docs].sort((a, b) => {
       const aEng = a.language?.includes("eng") ? -1 : 1;
       const bEng = b.language?.includes("eng") ? -1 : 1;
