@@ -1,5 +1,25 @@
 import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
 
+// These three call the verified /api/admin-chapters endpoint instead of
+// hitting Supabase directly — the table itself no longer trusts the public
+// anon key for moderation actions (see DROP POLICY change), only a verified
+// admin session can approve/reject/delete chapter name suggestions.
+const callAdmin = async (token, action, payload) => {
+  const r = await fetch("/api/admin-chapters", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, action, payload }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Admin request failed");
+  return r.json();
+};
+
+export const getPendingChapterNamesSecure = (token) => callAdmin(token, "pending");
+export const approveChapterNameSecure = (token, sv) =>
+  callAdmin(token, "approve", { id: sv.id, book: sv.book, chapter: sv.chapter });
+export const rejectChapterNameSecure = (token, sv) =>
+  callAdmin(token, "reject", { id: sv.id });
+
 export const getBookMetadata = (bookTitle) =>
   fetch(
     `${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(bookTitle)}&select=chapter_count`,
@@ -17,24 +37,6 @@ export const postChapterName = (payload) =>
     method: "POST", headers: H,
     body: JSON.stringify(payload),
   });
-
-export const getPendingChapterNames = () =>
-  fetch(
-    `${SUPABASE_URL}/rest/v1/chapter_names?status=eq.pending&order=created_at.desc`,
-    { headers: H }
-  ).then((r) => r.json());
-
-export const patchChapterNameStatus = (id, status) =>
-  fetch(`${SUPABASE_URL}/rest/v1/chapter_names?id=eq.${id}`, {
-    method: "PATCH", headers: H,
-    body: JSON.stringify({ status }),
-  });
-
-export const deleteApprovedChapterName = (book, chapter) =>
-  fetch(
-    `${SUPABASE_URL}/rest/v1/chapter_names?book=eq.${encodeURIComponent(book)}&chapter=eq.${chapter}&status=eq.approved`,
-    { method: "DELETE", headers: H }
-  );
 
 export const postChapterCountSuggestion = (payload) =>
   fetch(`${SUPABASE_URL}/rest/v1/chapter_count_suggestions`, {
