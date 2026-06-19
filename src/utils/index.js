@@ -84,7 +84,12 @@ export const buildCanonical = ({ page, book, chapter }) => {
     return `https://thatpart.app/?book=${encodeURIComponent(book.title)}`;
   return "https://thatpart.app/";
 };
+export const isInAppBrowser = () => {
+  const ua = navigator.userAgent || navigator.vendor || window.opera || "";
+  return /Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|musical_ly|BytedanceWebview|Snapchat|Pinterest/i.test(ua);
+};
 
+export const isAndroidDevice = () => /Android/i.test(navigator.userAgent || "");
 export const shouldShowPWABanner = () => {
   const isStandalone =
     window.navigator.standalone === true ||
