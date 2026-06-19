@@ -4,6 +4,7 @@ import { isInAppBrowser } from "../utils";
 
 export const useAuth = () => {
   const [user, setUser]           = useState(null);
+  const [session, setSession]     = useState(null);
   const [authLoading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [showBrowserWarning, setShowBrowserWarning] = useState(false);
@@ -12,12 +13,13 @@ export const useAuth = () => {
     supabase.auth.getSession()
       .then(({ data }) => {
         setUser(data.session?.user || null);
+        setSession(data.session || null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => setUser(session?.user || null)
+      (_, session) => { setUser(session?.user || null); setSession(session || null); }
     );
 
     return () => subscription.unsubscribe();
@@ -67,5 +69,6 @@ export const useAuth = () => {
     signIn, signOut, authError,
     showBrowserWarning,
     dismissBrowserWarning: () => setShowBrowserWarning(false),
+    accessToken: session?.access_token || null,
   };
 };
