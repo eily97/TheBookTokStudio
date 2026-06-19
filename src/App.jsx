@@ -80,7 +80,11 @@ function AppContent() {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
     authError, showBrowserWarning, dismissBrowserWarning,
   } = useAuth();
-
+const {
+    user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
+    accessToken,
+    authError, showBrowserWarning, dismissBrowserWarning,
+  } = useAuth();
   const [page,    setPage]    = useState("landing");
   const [book,    setBook]    = useState(null);
   const [chapter, setChapter] = useState(null);
@@ -106,21 +110,20 @@ function AppContent() {
   const goChapter = useCallback((ch) => { setChapter(ch); setPage("comments"); }, []);
 
   const openAdmin = useCallback(async () => {
-    const d = await chapApi.getPendingChapterNames();
+    const d = await chapApi.getPendingChapterNamesSecure(accessToken);
     setPending(Array.isArray(d) ? d : []);
     setAdminOpen(true);
-  }, []);
+  }, [accessToken]);
 
   const approveChapter = useCallback(async (sv) => {
-    await chapApi.deleteApprovedChapterName(sv.book, sv.chapter);
-    await chapApi.patchChapterNameStatus(sv.id, "approved");
+    await chapApi.approveChapterNameSecure(accessToken, sv);
     setPending((p) => p.filter((x) => x.id !== sv.id));
-  }, []);
+  }, [accessToken]);
 
   const rejectChapter = useCallback(async (sv) => {
-    await chapApi.patchChapterNameStatus(sv.id, "rejected");
+    await chapApi.rejectChapterNameSecure(accessToken, sv);
     setPending((p) => p.filter((x) => x.id !== sv.id));
-  }, []);
+  }, [accessToken]);
 
   const handleDeleteComment = useCallback(async (id) => {
     if (!confirm("Delete this comment?")) return;
