@@ -78,13 +78,10 @@ const AuthErrorBanner = ({ message, onDismiss }) => (
 function AppContent() {
   const {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
-    authError, showBrowserWarning, dismissBrowserWarning,
-  } = useAuth();
-const {
-    user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
     accessToken,
     authError, showBrowserWarning, dismissBrowserWarning,
   } = useAuth();
+
   const [page,    setPage]    = useState("landing");
   const [book,    setBook]    = useState(null);
   const [chapter, setChapter] = useState(null);
