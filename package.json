@@ -3,11 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "scripts": {
-    "dev": "vite",
     "build": "node scripts/generate-sitemap.mjs && vite build",
-    "preview": "vite preview"
-  },
     "preview": "vite preview"
   },
   "dependencies": {
