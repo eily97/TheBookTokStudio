@@ -107,6 +107,29 @@ export const buildStructuredData = ({ page, book, chapter, commentCount }) => {
   }
   return null;
 };
+export const buildStructuredData = ({ page, book, chapter, commentCount }) => {
+  if (page === "book" && book) {
+    return {
+      "@context": "https://schema.org",
+      "@type": "Book",
+      name: book.title,
+      author: book.author ? { "@type": "Person", name: book.author } : undefined,
+      image: book.cover || undefined,
+      url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}`,
+    };
+  }
+  if (page === "comments" && book && chapter) {
+    return {
+      "@context": "https://schema.org",
+      "@type": "DiscussionForumPosting",
+      headline: `${book.title} — Chapter ${chapter} reader reactions`,
+      about: { "@type": "Book", name: book.title, author: book.author ? { "@type": "Person", name: book.author } : undefined },
+      url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}&chapter=${chapter}`,
+      commentCount: commentCount ?? undefined,
+    };
+  }
+  return null;
+};
 export const isInAppBrowser = () => {
   const ua = navigator.userAgent || navigator.vendor || window.opera || "";
   return /Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|musical_ly|BytedanceWebview|Snapchat|Pinterest/i.test(ua);
