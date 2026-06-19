@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Helmet } from "react-helmet-async";
 
-export const SEO = memo(({ title, desc, canonical }) => (
+export const SEO = memo(({ title, desc, canonical, structuredData }) => (
   <Helmet>
     <title>{title}</title>
     <meta name="description" content={desc} />
@@ -19,5 +19,8 @@ export const SEO = memo(({ title, desc, canonical }) => (
     <meta name="twitter:description" content={desc} />
     <meta name="twitter:image"       content="https://thatpart.app/og-image.png" />
     <meta name="google-site-verification" content="tl8FQnHwLZsDIFlwHSPSgTDjh0g8Sm4C893F_HWoqBQ" />
+    {structuredData && (
+      <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+    )}
   </Helmet>
 ));
