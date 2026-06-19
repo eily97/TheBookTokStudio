@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, useEffect } from "react";
 import { S } from "../styles";
-import { BookCover } from "../components/ui";
+import { BookCover, Button } from "../components/ui";
 import { ChapterList, ChapterInput } from "../components/book/ChapterList";
 import { useBook } from "../hooks/useBook";
 import * as chapApi from "../api/chapters";
@@ -15,6 +15,9 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
   const [descExpanded,   setDescExpanded]   = useState(false);
   const [reportCount,    setReportCount]    = useState(false);
   const [suggestedCount, setSuggestedCount] = useState("");
+  const [countError,     setCountError]     = useState(null);
+  const [countSent,      setCountSent]      = useState(false);
+  const [isSubmittingCount, setSubmittingCount] = useState(false);
   const [chapterInput,   setChapterInput]   = useState("");
 
   useEffect(() => {
@@ -40,14 +43,25 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
   }, [chapterInput, user, chapterNames, book, username, addChapterName, onSelectChapter]);
 
   const submitCountSuggestion = useCallback(async () => {
+    if (isSubmittingCount) return;
     const num = parseInt(suggestedCount);
-    if (!num || num < 1 || num > 200) { alert("Please enter a valid chapter count between 1 and 200."); return; }
+    if (!num || num < 1 || num > 200) {
+      setCountError("Please enter a valid chapter count between 1 and 200.");
+      return;
+    }
+    setCountError(null);
+    setSubmittingCount(true);
     try {
       await chapApi.postChapterCountSuggestion({ book_title: book.title, suggested_count: num, suggested_by: username, status: "pending" });
       setReportCount(false); setSuggestedCount("");
-      alert("Thank you! Your correction has been submitted for review.");
-    } catch { alert("Could not submit. Please try again."); }
-  }, [suggestedCount, book, username]);
+      setCountSent(true);
+      setTimeout(() => setCountSent(false), 3000);
+    } catch {
+      setCountError("Could not submit. Please try again.");
+    } finally {
+      setSubmittingCount(false);
+    }
+  }, [suggestedCount, book, username, isSubmittingCount]);
 
   return (
     <div style={S.body}>
@@ -128,8 +142,18 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
           <div style={{ display: "flex", gap: 8 }}>
             <input type="number" style={{ ...S.input, flex: 1 }} placeholder="e.g. 32"
               value={suggestedCount} onChange={(e) => setSuggestedCount(e.target.value)} />
-            <button style={S.btnPink} onClick={submitCountSuggestion}>Send</button>
+            <Button style={S.btnPink} disabled={isSubmittingCount} onClick={submitCountSuggestion}>
+              {isSubmittingCount ? "..." : "Send"}
+            </Button>
           </div>
+          {countError && (
+            <div style={{ marginTop: 8, color: "#b45309", fontSize: 13 }}>⏳ {countError}</div>
+          )}
+        </div>
+      )}
+      {countSent && (
+        <div style={{ ...S.card, background: "#fff8fb", borderColor: "#fce7f3", marginBottom: 12, color: "#db2777", fontWeight: 600, textAlign: "center" }}>
+          🩷 Thank you! Your correction has been submitted for review.
         </div>
       )}
 
@@ -158,7 +182,8 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
                 ))}
             </div>
           )}
-          <ChapterInput value={chapterInput} onChange={setChapterInput} onGo={goChapterFromInput} />
+          <ChapterInput value={chapterInput} onChange={setChapterInput} onGo={goChapterFromInput}
+            onQuickStart={() => onSelectChapter(1)} />
         </div>
       )}
 
