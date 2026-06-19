@@ -1,15 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../api/supabase";
+import { isInAppBrowser } from "../utils";
 
 export const useAuth = () => {
   const [user, setUser]           = useState(null);
   const [authLoading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  const [showBrowserWarning, setShowBrowserWarning] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user || null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        setUser(data.session?.user || null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_, session) => setUser(session?.user || null)
@@ -18,11 +23,24 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = useCallback(() =>
-    supabase.auth.signInWithOAuth({
+  const signIn = useCallback(async () => {
+    setAuthError(null);
+
+    // Google blocks OAuth inside Instagram/TikTok/Facebook in-app browsers
+    // ("disallowed_useragent"). Catch it here instead of letting Google's
+    // confusing error page break the flow.
+    if (isInAppBrowser()) {
+      setShowBrowserWarning(true);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: "https://thatpart.app" },
-    }), []);
+    });
+
+    if (error) setAuthError(error.message);
+  }, []);
 
   const signOut = useCallback(() => supabase.auth.signOut(), []);
 
@@ -44,5 +62,10 @@ export const useAuth = () => {
     [user]
   );
 
-  return { user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut };
+  return {
+    user, authLoading, username, avatar, isAdmin, joinDate,
+    signIn, signOut, authError,
+    showBrowserWarning,
+    dismissBrowserWarning: () => setShowBrowserWarning(false),
+  };
 };
