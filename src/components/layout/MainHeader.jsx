@@ -12,7 +12,7 @@ export const MainHeader = memo(({
     <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
       {user ? (
         <>
-          <button onClick={onNotificationsClick}
+          <button onClick={onNotificationsClick} aria-label="Notifications"
             style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
             🩷
             {unreadCount > 0 && (
@@ -21,16 +21,17 @@ export const MainHeader = memo(({
               </span>
             )}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={onProfileClick}>
+          <button onClick={onProfileClick} aria-label="Your profile"
+            style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
             <Avatar src={avatar} name={username} size={28} />
             <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-          </div>
+          </button>
           <button onClick={onSignOut}
             style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>
             Sign out
           </button>
           {isAdmin && (
-            <button onClick={onAdminClick}
+            <button onClick={onAdminClick} aria-label="Admin panel"
               style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>
               ⚙
             </button>
