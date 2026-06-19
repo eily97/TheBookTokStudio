@@ -149,6 +149,7 @@ function AppContent() {
         onNotificationsClick={() => { setPage("notifications"); refreshNotifs(); }}
         onProfileClick={() => { setPage("profile"); profileHook.load(); bookHook.loadReadingList(); }}
         onSignOut={signOut}
+        onSignIn={signIn}
         onAdminClick={openAdmin}
       />
       {showPWA && (
