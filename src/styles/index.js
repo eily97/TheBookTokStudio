@@ -23,7 +23,7 @@ export const S = {
     border: "1.5px solid #e8e8e4",
     borderRadius: 10,
     padding: "12px 16px",
-    fontSize: 15,
+    fontSize: 16,
     color: "#1a1a1a",
     outline: "none",
     boxSizing: "border-box",
