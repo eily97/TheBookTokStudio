@@ -1,4 +1,5 @@
 import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
+import { getAuthHeaders } from "./authHeaders";
 
 // These three call the verified /api/admin-chapters endpoint instead of
 // hitting Supabase directly — the table itself no longer trusts the public
@@ -44,22 +45,31 @@ export const postChapterCountSuggestion = (payload) =>
     body: JSON.stringify(payload),
   });
 
-export const getReadingList = (username) =>
-  fetch(
+// Reading list is personal — always go through the real session so RLS can
+// restrict it to its owner.
+export const getReadingList = async (username) => {
+  const headers = await getAuthHeaders();
+  const r = await fetch(
     `${SUPABASE_URL}/rest/v1/reading_list?username=eq.${encodeURIComponent(username)}&order=added_at.desc`,
-    { headers: H }
-  ).then((r) => r.json());
+    { headers }
+  );
+  return r.json();
+};
 
-export const addToReadingList = (payload) =>
-  fetch(`${SUPABASE_URL}/rest/v1/reading_list`, {
-    method: "POST", headers: H,
+export const addToReadingList = async (payload) => {
+  const headers = await getAuthHeaders();
+  return fetch(`${SUPABASE_URL}/rest/v1/reading_list`, {
+    method: "POST", headers,
     body: JSON.stringify(payload),
   });
+};
 
-export const removeFromReadingList = (id) =>
-  fetch(`${SUPABASE_URL}/rest/v1/reading_list?id=eq.${id}`, {
-    method: "DELETE", headers: H,
+export const removeFromReadingList = async (id) => {
+  const headers = await getAuthHeaders();
+  return fetch(`${SUPABASE_URL}/rest/v1/reading_list?id=eq.${id}`, {
+    method: "DELETE", headers,
   });
+};
 
 export const getRecentBookComments = (limit = 200) =>
   fetch(
