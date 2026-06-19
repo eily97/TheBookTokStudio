@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -9,17 +9,25 @@ import { useProfile }       from "./hooks/useProfile";
 import { useTrending }      from "./hooks/useTrending";
 import * as chapApi         from "./api/chapters";
 
-import { SEO }            from "./components/layout/SEO";
-import { MainHeader }     from "./components/layout/MainHeader";
-import { PWABanner }      from "./components/layout/PWABanner";
-import { Footer }         from "./components/ui";
-import { ShareCardModal } from "./components/sharecard/ShareCardModal";
+import { SEO }              from "./components/layout/SEO";
+import { MainHeader }       from "./components/layout/MainHeader";
+import { PWABanner }        from "./components/layout/PWABanner";
+import { Footer }           from "./components/ui";
 import { InAppBrowserModal } from "./components/layout/InAppBrowserModal";
+import { ErrorBoundary }    from "./components/layout/ErrorBoundary";
 
-import { LandingPage, NotificationsPage, ProfilePage, AdminPage } from "./pages/misc";
-import { HomePage }       from "./pages/HomePage";
-import { BookPage }       from "./pages/BookPage";
-import { CommentsPage }   from "./pages/CommentsPage";
+// LandingPage is the very first thing most visitors see, so it stays in the
+// main bundle. Everything below is only needed after an interaction, so it's
+// split into its own chunk and fetched on demand — keeps first load light.
+import { LandingPage } from "./pages/LandingPage";
+
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const ProfilePage       = lazy(() => import("./pages/ProfilePage").then((m) => ({ default: m.ProfilePage })));
+const AdminPage         = lazy(() => import("./pages/AdminPage").then((m) => ({ default: m.AdminPage })));
+const HomePage          = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
+const BookPage           = lazy(() => import("./pages/BookPage").then((m) => ({ default: m.BookPage })));
+const CommentsPage      = lazy(() => import("./pages/CommentsPage").then((m) => ({ default: m.CommentsPage })));
+const ShareCardModal    = lazy(() => import("./components/sharecard/ShareCardModal").then((m) => ({ default: m.ShareCardModal })));
 
 import { S }                                      from "./styles";
 import { buildSEO, buildCanonical, shouldShowPWABanner } from "./utils";
@@ -45,10 +53,32 @@ const AuthSkeleton = () => (
   </div>
 );
 
+const PageLoader = () => (
+  <div style={{ display: "flex", justifyContent: "center", padding: "60px 20px" }}>
+    <div style={{
+      width: 28, height: 28, borderRadius: "50%",
+      border: "3px solid #fce7f3", borderTopColor: "#f472b6",
+      animation: "spin 0.8s linear infinite",
+    }} />
+    <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
+  </div>
+);
+
+const AuthErrorBanner = ({ message, onDismiss }) => (
+  <div style={{
+    background: "#fef2f2", borderBottom: "1px solid #fecaca", color: "#b91c1c",
+    fontSize: 13, padding: "10px 16px", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: 12, textAlign: "center",
+  }}>
+    <span>Sign-in failed: {message}</span>
+    <button onClick={onDismiss} style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontWeight: 700 }}>✕</button>
+  </div>
+);
+
 function AppContent() {
   const {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
-    showBrowserWarning, dismissBrowserWarning,
+    authError, showBrowserWarning, dismissBrowserWarning,
   } = useAuth();
 
   const [page,    setPage]    = useState("landing");
@@ -59,6 +89,7 @@ function AppContent() {
   const [showPWA,   setShowPWA]   = useState(shouldShowPWABanner);
   const [adminOpen, setAdminOpen] = useState(false);
   const [pending,   setPending]   = useState([]);
+  const [dismissedAuthError, setDismissedAuthError] = useState(false);
 
   const { notifications, unreadCount, refresh: refreshNotifs, markAllRead } = useNotifications(user ? username : null);
   const bookHook    = useBook(username);
@@ -132,7 +163,9 @@ function AppContent() {
         </button>
         <span style={{ marginLeft: "auto", ...S.tag }}>Admin</span>
       </div>
-      <AdminPage pending={pending} onApprove={approveChapter} onReject={rejectChapter} />
+      <Suspense fallback={<PageLoader />}>
+        <AdminPage pending={pending} onApprove={approveChapter} onReject={rejectChapter} />
+      </Suspense>
       <Analytics />
     </div>
   );
@@ -140,8 +173,15 @@ function AppContent() {
   return (
     <div style={S.wrap}>
       <SEO title={seo.title} desc={seo.desc} canonical={canonical} />
-      <ShareCardModal shareCard={shareCard} onClose={() => setShareCard(null)} />
+      {shareCard && (
+        <Suspense fallback={null}>
+          <ShareCardModal shareCard={shareCard} onClose={() => setShareCard(null)} />
+        </Suspense>
+      )}
       {showBrowserWarning && <InAppBrowserModal onClose={dismissBrowserWarning} />}
+      {authError && !dismissedAuthError && (
+        <AuthErrorBanner message={authError} onDismiss={() => setDismissedAuthError(true)} />
+      )}
       <MainHeader
         user={user} username={username} avatar={avatar}
         isAdmin={isAdmin} unreadCount={unreadCount}
@@ -155,33 +195,35 @@ function AppContent() {
       {showPWA && (
         <PWABanner onDismiss={() => { setShowPWA(false); localStorage.setItem("pwa_dismissed", "1"); }} />
       )}
-      {page === "notifications" && (
-        <NotificationsPage notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} />
-      )}
-      {page === "profile" && (
-        <ProfilePage
-          username={username} avatar={avatar} joinDate={joinDate}
-          myComments={profileHook.myComments} loading={profileHook.loading}
-          totalLikes={profileHook.totalLikes} booksRead={profileHook.booksRead}
-          mostActiveBook={profileHook.mostActiveBook} readingList={bookHook.readingList}
-          onDeleteComment={handleDeleteComment} onGoBook={goBook}
-          onRemoveFromReadingList={bookHook.removeBook}
-          onRefreshReadingList={bookHook.loadReadingList}
-        />
-      )}
-      {page === "home" && <HomePage onSelectBook={goBook} />}
-      {page === "book" && book && (
-        <BookPage book={book} user={user} username={username} onBack={goHome} onSelectChapter={goChapter} />
-      )}
-      {page === "comments" && book && (
-        <CommentsPage
-          book={book} chapter={chapter} chapterNames={bookHook.chapterNames}
-          user={user} username={username}
-          onBack={() => setPage("book")}
-          onOpenShareCard={setShareCard}
-          onSignIn={signIn}
-        />
-      )}
+      <Suspense fallback={<PageLoader />}>
+        {page === "notifications" && (
+          <NotificationsPage notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} />
+        )}
+        {page === "profile" && (
+          <ProfilePage
+            username={username} avatar={avatar} joinDate={joinDate}
+            myComments={profileHook.myComments} loading={profileHook.loading}
+            totalLikes={profileHook.totalLikes} booksRead={profileHook.booksRead}
+            mostActiveBook={profileHook.mostActiveBook} readingList={bookHook.readingList}
+            onDeleteComment={handleDeleteComment} onGoBook={goBook}
+            onRemoveFromReadingList={bookHook.removeBook}
+            onRefreshReadingList={bookHook.loadReadingList}
+          />
+        )}
+        {page === "home" && <HomePage onSelectBook={goBook} />}
+        {page === "book" && book && (
+          <BookPage book={book} user={user} username={username} onBack={goHome} onSelectChapter={goChapter} />
+        )}
+        {page === "comments" && book && (
+          <CommentsPage
+            book={book} chapter={chapter} chapterNames={bookHook.chapterNames}
+            user={user} username={username}
+            onBack={() => setPage("book")}
+            onOpenShareCard={setShareCard}
+            onSignIn={signIn}
+          />
+        )}
+      </Suspense>
       <Footer />
       <Analytics />
     </div>
@@ -190,8 +232,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <HelmetProvider>
-      <AppContent />
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <AppContent />
+      </HelmetProvider>
+    </ErrorBoundary>
   );
 }
