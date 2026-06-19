@@ -14,6 +14,7 @@ import { MainHeader }     from "./components/layout/MainHeader";
 import { PWABanner }      from "./components/layout/PWABanner";
 import { Footer }         from "./components/ui";
 import { ShareCardModal } from "./components/sharecard/ShareCardModal";
+import { InAppBrowserModal } from "./components/layout/InAppBrowserModal";
 
 import { LandingPage, NotificationsPage, ProfilePage, AdminPage } from "./pages/misc";
 import { HomePage }       from "./pages/HomePage";
@@ -45,7 +46,10 @@ const AuthSkeleton = () => (
 );
 
 function AppContent() {
-  const { user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut } = useAuth();
+  const {
+    user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
+    showBrowserWarning, dismissBrowserWarning,
+  } = useAuth();
 
   const [page,    setPage]    = useState("landing");
   const [book,    setBook]    = useState(null);
@@ -106,13 +110,16 @@ function AppContent() {
   if (authLoading) return <AuthSkeleton />;
 
   if (page === "landing") return (
-    <LandingPage
-      onBrowse={() => setPage("home")}
-      onSignIn={signIn}
-      trending={trending}
-      trendingCovers={trendingCovers}
-      onSelectBook={goBook}
-    />
+    <>
+      <LandingPage
+        onBrowse={() => setPage("home")}
+        onSignIn={signIn}
+        trending={trending}
+        trendingCovers={trendingCovers}
+        onSelectBook={goBook}
+      />
+      {showBrowserWarning && <InAppBrowserModal onClose={dismissBrowserWarning} />}
+    </>
   );
 
   if (adminOpen && isAdmin) return (
@@ -134,6 +141,7 @@ function AppContent() {
     <div style={S.wrap}>
       <SEO title={seo.title} desc={seo.desc} canonical={canonical} />
       <ShareCardModal shareCard={shareCard} onClose={() => setShareCard(null)} />
+      {showBrowserWarning && <InAppBrowserModal onClose={dismissBrowserWarning} />}
       <MainHeader
         user={user} username={username} avatar={avatar}
         isAdmin={isAdmin} unreadCount={unreadCount}
