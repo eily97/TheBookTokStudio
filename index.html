@@ -44,6 +44,13 @@
     <style>
       * { -webkit-tap-highlight-color: transparent; }
       body { margin: 0; overscroll-behavior: none; }
+      /* Inputs/buttons set outline:none for mouse clicks (no ugly ring on tap),
+         but keyboard users still need to see where focus is — this restores
+         it only for :focus-visible (keyboard/assistive tech), not mouse clicks. */
+      input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+        outline: 2px solid #f472b6;
+        outline-offset: 2px;
+      }
     </style>
   </head>
   <body>
