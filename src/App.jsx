@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -30,7 +30,7 @@ const CommentsPage      = lazy(() => import("./pages/CommentsPage").then((m) => 
 const ShareCardModal    = lazy(() => import("./components/sharecard/ShareCardModal").then((m) => ({ default: m.ShareCardModal })));
 
 import { S }                                      from "./styles";
-import { buildSEO, buildCanonical, shouldShowPWABanner } from "./utils";
+import { buildSEO, buildCanonical, buildStructuredData, shouldShowPWABanner } from "./utils";
 
 const AuthSkeleton = () => (
   <div style={{ minHeight: "100vh", background: "#fafaf8", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
@@ -82,15 +82,49 @@ function AppContent() {
     authError, showBrowserWarning, dismissBrowserWarning,
   } = useAuth();
 
-  const [page,    setPage]    = useState("landing");
+  const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const deepLinkBook  = initialParams.get("book");
+
+  const [page,    setPage]    = useState(deepLinkBook ? "home" : "landing");
   const [book,    setBook]    = useState(null);
   const [chapter, setChapter] = useState(null);
+  const [resolvingLink, setResolvingLink] = useState(!!deepLinkBook);
 
   const [shareCard, setShareCard] = useState(null);
   const [showPWA,   setShowPWA]   = useState(shouldShowPWABanner);
   const [adminOpen, setAdminOpen] = useState(false);
   const [pending,   setPending]   = useState([]);
   const [dismissedAuthError, setDismissedAuthError] = useState(false);
+
+  // Shared links and any future sitemap entries point to ?book=...&chapter=...
+  // URLs. Without this, opening one of those links just shows the homepage —
+  // the "Share" button's copied link silently didn't work before this fix.
+  useEffect(() => {
+    if (!deepLinkBook) return;
+    const chapterParam = initialParams.get("chapter");
+
+    (async () => {
+      try {
+        const { searchBooks } = await import("./api/books");
+        const results = await searchBooks(deepLinkBook);
+        const match = results.find((b) => b.title.toLowerCase() === deepLinkBook.toLowerCase()) || results[0];
+        if (match) {
+          setBook(match);
+          if (chapterParam) {
+            const num = parseInt(chapterParam);
+            setChapter(!isNaN(num) ? num : chapterParam);
+            setPage("comments");
+          } else {
+            setPage("book");
+          }
+        }
+      } catch {
+        // Resolution failed — fall back to the homepage rather than getting stuck.
+      } finally {
+        setResolvingLink(false);
+      }
+    })();
+  }, [deepLinkBook, initialParams]);
 
   const { notifications, unreadCount, refresh: refreshNotifs, markAllRead } = useNotifications(user ? username : null);
   const bookHook    = useBook(username);
@@ -137,8 +171,12 @@ function AppContent() {
     buildCanonical({ page, book, chapter }),
     [page, book, chapter]
   );
+  const structuredData = useMemo(() =>
+    buildStructuredData({ page, book, chapter }),
+    [page, book, chapter]
+  );
 
-  if (authLoading) return <AuthSkeleton />;
+  if (authLoading || resolvingLink) return <AuthSkeleton />;
 
   if (page === "landing") return (
     <>
@@ -172,7 +210,7 @@ function AppContent() {
 
   return (
     <div style={S.wrap}>
-      <SEO title={seo.title} desc={seo.desc} canonical={canonical} />
+      <SEO title={seo.title} desc={seo.desc} canonical={canonical} structuredData={structuredData} />
       {shareCard && (
         <Suspense fallback={null}>
           <ShareCardModal shareCard={shareCard} onClose={() => setShareCard(null)} />
