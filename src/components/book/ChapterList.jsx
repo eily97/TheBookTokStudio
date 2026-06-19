@@ -1,5 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { S } from "../../styles";
+import { Button } from "../ui";
 import * as chapApi from "../../api/chapters";
 
 const ChapterRow = memo(({ ch, name, count, user, suggestSent, onGo, onToggleSuggest }) => (
@@ -27,35 +28,47 @@ const ChapterRow = memo(({ ch, name, count, user, suggestSent, onGo, onToggleSug
 ));
 
 const SuggestNameForm = memo(({ chapter, book, username, onSent }) => {
-  const [text, setText] = useState("");
+  const [text, setText]             = useState("");
+  const [isSubmitting, setSubmitting] = useState(false);
 
   const submit = useCallback(async () => {
-    if (!text.trim()) return;
-    await chapApi.postChapterName({ book: book.title, chapter, name: text.trim(), suggested_by: username, status: "pending" });
-    try { await chapApi.notifyAdmin({ book: book.title, chapter, name: text.trim(), suggested_by: username }); } catch {}
-    onSent(chapter);
-  }, [text, chapter, book, username, onSent]);
+    if (!text.trim() || isSubmitting) return;
+    setSubmitting(true);
+    try {
+      await chapApi.postChapterName({ book: book.title, chapter, name: text.trim(), suggested_by: username, status: "pending" });
+      try { await chapApi.notifyAdmin({ book: book.title, chapter, name: text.trim(), suggested_by: username }); } catch {}
+      onSent(chapter);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [text, chapter, book, username, onSent, isSubmitting]);
 
   return (
     <div style={{ ...S.card, marginTop: -4, marginBottom: 8 }}>
       <div style={{ ...S.muted, marginBottom: 8 }}>Suggest a name for Chapter {chapter}:</div>
       <div style={{ display: "flex", gap: 8 }}>
         <input style={{ ...S.input, flex: 1 }} placeholder="e.g. The Awakening" value={text} onChange={(e) => setText(e.target.value)} />
-        <button style={S.btnPink} onClick={submit}>Send</button>
+        <Button style={S.btnPink} disabled={isSubmitting || !text.trim()} onClick={submit}>
+          {isSubmitting ? "..." : "Send"}
+        </Button>
       </div>
     </div>
   );
 });
 
-export const ChapterInput = memo(({ value, onChange, onGo }) => (
+export const ChapterInput = memo(({ value, onChange, onGo, onQuickStart }) => (
   <div style={{ ...S.card, borderColor: "#fce7f3", background: "#fff8fb", padding: 20 }}>
     <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Which chapter are you on?</div>
-    <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>Enter a number (e.g. 12) or a name (e.g. Prologue)</div>
+    <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>Not sure? Just start from the beginning.</div>
+    <Button style={{ ...S.btnPinkFull, marginBottom: 12 }} onClick={onQuickStart}>
+      Start from Chapter 1 →
+    </Button>
+    <div style={{ fontSize: 12, color: "#bbb", marginBottom: 8, textAlign: "center" }}>or jump to a specific chapter</div>
     <div style={{ display: "flex", gap: 8 }}>
       <input style={{ ...S.input, flex: 1 }} placeholder="12 or Prologue" value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") onGo(); }} />
-      <button style={S.btnPink} onClick={onGo}>Go →</button>
+      <Button style={S.btnPink} onClick={onGo}>Go →</Button>
     </div>
   </div>
 ));
