@@ -5,7 +5,7 @@ import { Logo, Avatar, SignInButton } from "../ui";
 export const MainHeader = memo(({
   user, username, avatar, isAdmin,
   unreadCount,
-  onLogoClick, onNotificationsClick, onProfileClick, onSignOut, onAdminClick,
+  onLogoClick, onNotificationsClick, onProfileClick, onSignOut, onAdminClick, onSignIn,
 }) => (
   <div style={S.header}>
     <Logo onClick={onLogoClick} />
@@ -37,7 +37,7 @@ export const MainHeader = memo(({
           )}
         </>
       ) : (
-        <SignInButton onClick={onNotificationsClick} compact />
+        <SignInButton onClick={onSignIn} compact />
       )}
     </div>
   </div>
