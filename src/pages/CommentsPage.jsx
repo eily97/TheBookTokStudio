@@ -1,5 +1,6 @@
 import { memo, useState, useCallback, useEffect } from "react";
 import { S } from "../styles";
+import { Button } from "../components/ui";
 import { CommentCard } from "../components/comments/CommentCard";
 import { CommentForm } from "../components/comments/CommentForm";
 import { useComments } from "../hooks/useComments";
@@ -12,6 +13,7 @@ export const CommentsPage = memo(({ book, chapter, chapterNames, user, username,
 
   const [aiText,    setAiText]    = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -26,7 +28,7 @@ export const CommentsPage = memo(({ book, chapter, chapterNames, user, username,
     try {
       const r = await fetch("/api/claude", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
       });
       const d = await r.json();
       setAiText(d.content?.map((i) => i.text || "").join("") || "Could not get summary.");
@@ -40,7 +42,8 @@ export const CommentsPage = memo(({ book, chapter, chapterNames, user, username,
       navigator.share({ title: `${book.title} — Chapter ${chapter}`, text: `Check out the thoughts on Chapter ${chapter} of "${book.title}" on ThatPart!`, url });
     } else {
       navigator.clipboard.writeText(url);
-      alert("Link copied! 🔗");
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
     }
   }, [book, chapter]);
 
@@ -61,16 +64,19 @@ export const CommentsPage = memo(({ book, chapter, chapterNames, user, username,
               : `Chapter ${chapter}`}
           </div>
         </div>
-        <button onClick={shareChapter}
-          style={{ background: "#fce7f3", border: "none", borderRadius: 10, padding: "8px 14px", color: "#db2777", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-          Share 🔗
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+          <Button onClick={shareChapter}
+            style={{ background: "#fce7f3", border: "none", borderRadius: 10, padding: "8px 14px", color: "#db2777", fontSize: 13, fontWeight: 600 }}>
+            Share 🔗
+          </Button>
+          {linkCopied && <span style={{ fontSize: 11, color: "#db2777", fontWeight: 600 }}>Link copied ✓</span>}
+        </div>
       </div>
 
       {comments.length > 0 && (
-        <button onClick={getAI} disabled={aiLoading} style={S.btnAi}>
+        <Button onClick={getAI} disabled={aiLoading} style={S.btnAi}>
           {aiLoading ? "✦ Analyzing..." : "✦ What did readers feel in this chapter?"}
-        </button>
+        </Button>
       )}
       {aiText && (
         <div style={{ ...S.card, borderColor: "#fce7f3", background: "#fff8fb", marginBottom: 20 }}>
