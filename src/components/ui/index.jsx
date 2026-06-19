@@ -1,5 +1,35 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { S } from "../../styles";
+
+// Centralized button so every CTA in the app gets real hover/active/disabled
+// feedback for free, instead of every file reinventing (or skipping) it.
+export const Button = memo(({ children, style, disabled, onClick, type = "button", ...rest }) => {
+  const [hover, setHover]   = useState(false);
+  const [active, setActive] = useState(false);
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setActive(false); }}
+      onMouseDown={() => setActive(true)}
+      onMouseUp={() => setActive(false)}
+      style={{
+        ...style,
+        opacity: disabled ? 0.6 : 1,
+        cursor: disabled ? "default" : (style?.cursor || "pointer"),
+        transition: "transform 0.12s ease, filter 0.12s ease, opacity 0.12s ease",
+        filter: !disabled && hover ? "brightness(1.06)" : "none",
+        transform: !disabled && active ? "scale(0.97)" : "scale(1)",
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+});
 
 export const GoogleIcon = memo(() => (
   <svg width="18" height="18" viewBox="0 0 18 18">
@@ -11,7 +41,8 @@ export const GoogleIcon = memo(() => (
 ));
 
 export const Logo = memo(({ onClick }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={onClick}>
+  <button onClick={onClick} aria-label="thatpart home"
+    style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
     <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #fb923c, #f472b6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <svg width="20" height="20" viewBox="0 0 100 100">
         <rect x="15" y="15" width="70" height="50" rx="4" fill="white" opacity="0.25"/>
@@ -27,7 +58,7 @@ export const Logo = memo(({ onClick }) => (
     <span style={{ fontFamily: "Georgia,serif", fontSize: 19, fontWeight: 700, letterSpacing: -0.5, color: "#1a1a1a" }}>
       that<span style={{ color: "#f472b6" }}>part</span>.
     </span>
-  </div>
+  </button>
 ));
 
 export const Footer = memo(() => (
@@ -35,12 +66,17 @@ export const Footer = memo(() => (
     <div style={{ fontFamily: "Georgia,serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
       that<span style={{ color: "#f472b6" }}>part</span>.
     </div>
-    <div style={{ color: "#aaa", fontSize: 12 }}>
+    <div style={{ color: "#aaa", fontSize: 12, marginBottom: 8 }}>
       by{" "}
       <a href="https://www.tiktok.com/@thebooktokstudio" target="_blank" rel="noreferrer"
         style={{ color: "#db2777", textDecoration: "none", fontWeight: 600 }}>
         TheBookTokStudio
       </a>
+    </div>
+    <div style={{ color: "#bbb", fontSize: 11 }}>
+      <a href="/privacy.html" style={{ color: "#bbb" }}>Privacy</a>
+      {" · "}
+      <a href="/terms.html" style={{ color: "#bbb" }}>Terms</a>
     </div>
   </div>
 ));
@@ -60,10 +96,10 @@ export const Avatar = memo(({ src, name = "?", size = 28 }) => (
 ));
 
 export const SignInButton = memo(({ onClick, compact = false }) => (
-  <button onClick={onClick}
+  <Button onClick={onClick}
     style={compact
       ? { ...S.googleBtn, width: "auto", marginBottom: 0, padding: "8px 14px" }
       : S.googleBtn}>
     <GoogleIcon /> {compact ? "Sign in" : "Continue with Google"}
-  </button>
+  </Button>
 ));
