@@ -1,15 +1,16 @@
-import { memo, useRef, useCallback } from "react";
+import { memo, useRef, useState, useCallback } from "react";
 import html2canvas from "html2canvas";
+import { Button } from "../ui";
 
 export const ShareCardModal = memo(({ shareCard, onClose }) => {
-  const cardRef      = useRef(null);
-  const generatingRef = useRef(false);
+  const cardRef               = useRef(null);
+  const [isGenerating, setGenerating] = useState(false);
+  const [error, setError]     = useState(null);
 
   const download = useCallback(async () => {
-    if (!cardRef.current || generatingRef.current) return;
-    generatingRef.current = true;
-    const btn = document.querySelector(".sc-download-btn");
-    if (btn) btn.textContent = "Generating...";
+    if (!cardRef.current || isGenerating) return;
+    setGenerating(true);
+    setError(null);
 
     try {
       const canvas = await html2canvas(cardRef.current, {
@@ -20,12 +21,10 @@ export const ShareCardModal = memo(({ shareCard, onClose }) => {
       link.href     = canvas.toDataURL("image/png");
       link.click();
     } catch {
-      alert("Could not generate image. Try again!");
+      setError("Could not generate image. Try again!");
     }
-
-    generatingRef.current = false;
-    if (btn) btn.textContent = "Download image 🩷";
-  }, [shareCard]);
+    setGenerating(false);
+  }, [shareCard, isGenerating]);
 
   if (!shareCard) return null;
 
@@ -65,15 +64,20 @@ export const ShareCardModal = memo(({ shareCard, onClose }) => {
             JOIN THE CONVERSATION · THATPART.APP
           </div>
         </div>
+        {error && (
+          <div style={{ marginTop: 12, background: "#fff8f0", border: "1px solid #fde8cc", borderRadius: 8, padding: "10px 14px", color: "#b45309", fontSize: 13 }}>
+            ⚠️ {error}
+          </div>
+        )}
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <button className="sc-download-btn" onClick={download}
-            style={{ flex: 1, background: "linear-gradient(135deg, #fb923c, #f472b6)", border: "none", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-            Download image 🩷
-          </button>
-          <button onClick={onClose}
-            style={{ background: "rgba(255,255,255,0.95)", border: "none", borderRadius: 12, padding: "14px 20px", color: "#1a1a1a", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+          <Button onClick={download} disabled={isGenerating}
+            style={{ flex: 1, background: "linear-gradient(135deg, #fb923c, #f472b6)", border: "none", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, fontWeight: 700 }}>
+            {isGenerating ? "Generating..." : "Download image 🩷"}
+          </Button>
+          <Button onClick={onClose}
+            style={{ background: "rgba(255,255,255,0.95)", border: "none", borderRadius: 12, padding: "14px 20px", color: "#1a1a1a", fontSize: 15, fontWeight: 600 }}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>
