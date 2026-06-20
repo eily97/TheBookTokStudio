@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
-import { S } from "../styles";
+import { S, shadow } from "../styles";
 import { BookCover, Button } from "../components/ui";
 import { ChapterList, ChapterInput } from "../components/book/ChapterList";
 import { useBook } from "../hooks/useBook";
@@ -113,9 +113,9 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
             {topChapters.map(([ch, count]) => (
               <div key={ch}
                 onClick={() => onSelectChapter(isNaN(+ch) ? ch : +ch)}
-                style={{ background: "#fff", border: "1.5px solid #e8e8e4", borderRadius: 10, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                onMouseOver={(e) => (e.currentTarget.style.borderColor = "#f472b6")}
-                onMouseOut={(e)  => (e.currentTarget.style.borderColor = "#e8e8e4")}>
+                style={{ background: "#fff", border: "1px solid #e8e8e4", borderRadius: 10, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: shadow.sm }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = "#f472b6"; e.currentTarget.style.boxShadow = shadow.md; }}
+                onMouseOut={(e)  => { e.currentTarget.style.borderColor = "#e8e8e4"; e.currentTarget.style.boxShadow = shadow.sm; }}>
                 <span style={{ fontWeight: 700, fontSize: 15 }}>{isNaN(+ch) ? ch : `Ch. ${ch}`}</span>
                 <span style={S.tagWarm}>💬 {count}</span>
               </div>
@@ -170,8 +170,8 @@ export const BookPage = memo(({ book, user, username, onBack, onSelectChapter })
                 })
                 .map(([ch, count]) => (
                   <div key={ch} style={S.chRow}
-                    onMouseOver={(e) => (e.currentTarget.style.borderColor = "#f472b6")}
-                    onMouseOut={(e)  => (e.currentTarget.style.borderColor = "#e8e8e4")}
+                    onMouseOver={(e) => { e.currentTarget.style.borderColor = "#f472b6"; e.currentTarget.style.boxShadow = shadow.md; }}
+                    onMouseOut={(e)  => { e.currentTarget.style.borderColor = "#e8e8e4"; e.currentTarget.style.boxShadow = shadow.sm; }}
                     onClick={() => onSelectChapter(isNaN(+ch) ? ch : +ch)}>
                     <span style={{ ...S.tag, minWidth: 28, textAlign: "center", flexShrink: 0 }}>{ch}</span>
                     <span style={{ fontSize: 15, fontWeight: 500, flex: 1 }}>
