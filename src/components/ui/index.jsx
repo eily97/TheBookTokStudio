@@ -108,8 +108,9 @@ export const SignInButton = memo(({ onClick, compact = false }) => (
 
 // Fallback for readers who don't want to use (or can't use, e.g. inside an
 // in-app browser) Google sign-in. Collapsed by default so it doesn't compete
-// visually with the primary Google button.
-export const EmailSignIn = memo(({ onSubmit }) => {
+// visually with the primary Google button. `light` flips text/border colors
+// for use on dark or colored (e.g. gradient) backgrounds.
+export const EmailSignIn = memo(({ onSubmit, light = false }) => {
   const [open, setOpen]     = useState(false);
   const [email, setEmail]   = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
@@ -129,7 +130,7 @@ export const EmailSignIn = memo(({ onSubmit }) => {
 
   if (status === "sent") {
     return (
-      <div style={{ fontSize: 13, color: "#db2777", fontWeight: 600, marginTop: 8 }}>
+      <div style={{ fontSize: 13, color: light ? "#fff" : "#db2777", fontWeight: 700, marginTop: 8 }}>
         📬 Check your inbox for a sign-in link!
       </div>
     );
@@ -138,7 +139,9 @@ export const EmailSignIn = memo(({ onSubmit }) => {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} style={{
-        background: "none", border: "none", color: "#999", fontSize: 13,
+        background: "none", border: "none",
+        color: light ? "rgba(255,255,255,0.9)" : "#999",
+        fontSize: 13, fontWeight: light ? 600 : 400,
         cursor: "pointer", textDecoration: "underline", padding: 0, marginTop: 8,
       }}>
         or continue with email
@@ -152,14 +155,20 @@ export const EmailSignIn = memo(({ onSubmit }) => {
         <input type="email" placeholder="you@example.com" value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          style={{ ...S.input, flex: 1, padding: "8px 12px", fontSize: 14, marginBottom: 0 }} />
+          style={{
+            ...S.input, flex: 1, padding: "8px 12px", fontSize: 14, marginBottom: 0,
+            ...(light ? { background: "rgba(255,255,255,0.95)" } : {}),
+          }} />
         <Button onClick={submit} disabled={status === "sending" || !email.trim()}
-          style={{ ...S.btnPink, padding: "8px 14px", fontSize: 13, marginBottom: 0 }}>
+          style={{
+            ...(light ? { background: "#fff", color: "#db2777" } : S.btnPink),
+            padding: "8px 14px", fontSize: 13, marginBottom: 0, border: "none", fontWeight: 700,
+          }}>
           {status === "sending" ? "..." : "Send link"}
         </Button>
       </div>
       {status === "error" && (
-        <div style={{ fontSize: 12, color: "#b45309", marginTop: 6 }}>⏳ {errMsg}</div>
+        <div style={{ fontSize: 12, color: light ? "#fff" : "#b45309", marginTop: 6, fontWeight: light ? 600 : 400 }}>⏳ {errMsg}</div>
       )}
     </div>
   );
