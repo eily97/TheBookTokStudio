@@ -1,10 +1,10 @@
 import { memo, useState } from "react";
 import { S } from "../../styles";
-import { Button, SignInButton } from "../ui";
+import { Button, SignInButton, EmailSignIn } from "../ui";
 import { containsProfanity, checkRateLimit } from "../../utils";
 import { RATE_LIMIT, RATE_WINDOW_MS } from "../../constants";
 
-export const CommentForm = memo(({ user, username, onPost, onSignIn }) => {
+export const CommentForm = memo(({ user, username, onPost, onSignIn, onSignInEmail }) => {
   const [text,           setText]         = useState("");
   const [spoiler,        setSpoiler]      = useState(false);
   const [postSuccess,    setPostSuccess]  = useState(false);
@@ -42,6 +42,11 @@ export const CommentForm = memo(({ user, username, onPost, onSignIn }) => {
     <div style={{ ...S.card, borderColor: "#fce7f3", background: "#fff8fb", textAlign: "center", padding: 24 }}>
       <div style={{ fontSize: 15, color: "#555", marginBottom: 12 }}>Sign in to share your thoughts</div>
       <SignInButton onClick={onSignIn} />
+      {onSignInEmail && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <EmailSignIn onSubmit={onSignInEmail} />
+        </div>
+      )}
     </div>
   );
 
