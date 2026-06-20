@@ -1,11 +1,11 @@
 import { memo } from "react";
-import { S } from "../../styles";
+import { S, shadow } from "../../styles";
 import { BookCover } from "../ui";
 
 export const BookCard = memo(({ book, count, onClick }) => (
   <div style={S.bookCard}
-    onMouseOver={(e)  => (e.currentTarget.style.borderColor = "#f472b6")}
-    onMouseOut={(e)   => (e.currentTarget.style.borderColor = "#e8e8e4")}
+    onMouseOver={(e) => { e.currentTarget.style.borderColor = "#f472b6"; e.currentTarget.style.boxShadow = shadow.md; }}
+    onMouseOut={(e)  => { e.currentTarget.style.borderColor = "#e8e8e4"; e.currentTarget.style.boxShadow = shadow.sm; }}
     onClick={onClick}>
     <BookCover src={book.cover} alt={book.title} />
     <div style={{ flex: 1 }}>
