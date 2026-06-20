@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../api/supabase";
-import { isInAppBrowser } from "../utils";
+import { isInAppBrowser, containsProfanity } from "../utils";
+import { claimUsername } from "../api/usernames";
 
 export const useAuth = () => {
   const [user, setUser]           = useState(null);
@@ -59,6 +60,33 @@ export const useAuth = () => {
 
   const signOut = useCallback(() => supabase.auth.signOut(), []);
 
+  // Everyone — Google or email — gets a one-time prompt to confirm/choose
+  // their public display name. `username_chosen` is an explicit flag (not
+  // inferred from whether a name exists) so Google users, who already have
+  // a name auto-filled from their profile, still get asked once instead of
+  // silently being stuck with whatever Google handed them.
+  const needsUsername = !!user && !user.user_metadata?.username_chosen;
+
+  const setUsername = useCallback(async (name) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length < 2) {
+      return { error: { message: "Please enter at least 2 characters." } };
+    }
+    if (containsProfanity(trimmed)) {
+      return { error: { message: "Please choose an appropriate name." } };
+    }
+    if (!user?.id) return { error: { message: "Not signed in." } };
+
+    const { error: claimError } = await claimUsername(trimmed, user.id);
+    if (claimError) return { error: claimError };
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: { name: trimmed, username_chosen: true },
+    });
+    if (!error && data?.user) setUser(data.user);
+    return { error };
+  }, [user]);
+
   const username = useMemo(
     () => user?.user_metadata?.name || user?.email?.split("@")[0] || "reader",
     [user]
@@ -80,6 +108,7 @@ export const useAuth = () => {
   return {
     user, authLoading, username, avatar, isAdmin, joinDate,
     signIn, signInWithEmail, signOut, authError,
+    needsUsername, setUsername,
     showBrowserWarning,
     dismissBrowserWarning: () => setShowBrowserWarning(false),
     accessToken: session?.access_token || null,
