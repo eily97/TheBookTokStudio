@@ -5,7 +5,7 @@ import { CommentCard } from "../components/comments/CommentCard";
 import { CommentForm } from "../components/comments/CommentForm";
 import { useComments } from "../hooks/useComments";
 
-export const CommentsPage = memo(({ book, chapter, chapterNames, user, username, onBack, onOpenShareCard, onSignIn }) => {
+export const CommentsPage = memo(({ book, chapter, chapterNames, user, username, onBack, onOpenShareCard, onSignIn, onSignInEmail }) => {
   const {
     comments, replies, loading,
     refresh, addComment, removeComment, likeComment, addReply, removeReply,
@@ -85,7 +85,7 @@ export const CommentsPage = memo(({ book, chapter, chapterNames, user, username,
         </div>
       )}
 
-      <CommentForm user={user} username={username} onPost={addComment} onSignIn={onSignIn} />
+      <CommentForm user={user} username={username} onPost={addComment} onSignIn={onSignIn} onSignInEmail={onSignInEmail} />
 
       <div style={{ ...S.label, marginTop: 24 }}>
         {loading ? "Loading..." : `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`}
