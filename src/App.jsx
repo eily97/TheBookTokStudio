@@ -77,7 +77,7 @@ const AuthErrorBanner = ({ message, onDismiss }) => (
 
 function AppContent() {
   const {
-    user, authLoading, username, avatar, isAdmin, joinDate, signIn, signOut,
+    user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
     accessToken,
     authError, showBrowserWarning, dismissBrowserWarning,
   } = useAuth();
@@ -183,6 +183,7 @@ function AppContent() {
       <LandingPage
         onBrowse={() => setPage("home")}
         onSignIn={signIn}
+        onSignInEmail={signInWithEmail}
         trending={trending}
         trendingCovers={trendingCovers}
         onSelectBook={goBook}
@@ -259,6 +260,7 @@ function AppContent() {
             onBack={() => setPage("book")}
             onOpenShareCard={setShareCard}
             onSignIn={signIn}
+            onSignInEmail={signInWithEmail}
           />
         )}
       </Suspense>
