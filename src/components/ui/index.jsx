@@ -105,3 +105,62 @@ export const SignInButton = memo(({ onClick, compact = false }) => (
     <GoogleIcon /> {compact ? "Sign in" : "Continue with Google"}
   </Button>
 ));
+
+// Fallback for readers who don't want to use (or can't use, e.g. inside an
+// in-app browser) Google sign-in. Collapsed by default so it doesn't compete
+// visually with the primary Google button.
+export const EmailSignIn = memo(({ onSubmit }) => {
+  const [open, setOpen]     = useState(false);
+  const [email, setEmail]   = useState("");
+  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [errMsg, setErrMsg] = useState("");
+
+  const submit = async () => {
+    if (!email.trim() || status === "sending") return;
+    setStatus("sending");
+    const { error } = await onSubmit(email.trim());
+    if (error) {
+      setStatus("error");
+      setErrMsg(error.message || "Could not send the link. Please try again.");
+    } else {
+      setStatus("sent");
+    }
+  };
+
+  if (status === "sent") {
+    return (
+      <div style={{ fontSize: 13, color: "#db2777", fontWeight: 600, marginTop: 8 }}>
+        📬 Check your inbox for a sign-in link!
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{
+        background: "none", border: "none", color: "#999", fontSize: 13,
+        cursor: "pointer", textDecoration: "underline", padding: 0, marginTop: 8,
+      }}>
+        or continue with email
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8, width: "100%" }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input type="email" placeholder="you@example.com" value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          style={{ ...S.input, flex: 1, padding: "8px 12px", fontSize: 14, marginBottom: 0 }} />
+        <Button onClick={submit} disabled={status === "sending" || !email.trim()}
+          style={{ ...S.btnPink, padding: "8px 14px", fontSize: 13, marginBottom: 0 }}>
+          {status === "sending" ? "..." : "Send link"}
+        </Button>
+      </div>
+      {status === "error" && (
+        <div style={{ fontSize: 12, color: "#b45309", marginTop: 6 }}>⏳ {errMsg}</div>
+      )}
+    </div>
+  );
+});
