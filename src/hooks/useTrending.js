@@ -43,11 +43,17 @@ export const useTrending = () => {
       const covers = Object.fromEntries(entries.filter(Boolean));
       setCovers(covers);
 
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: { trending: sorted, covers }, timestamp: Date.now(),
-        }));
-      } catch {}
+      // Only cache when we actually resolved at least some covers — a transient
+      // OpenLibrary hiccup shouldn't get "frozen" as the trending state for 30
+      // minutes. Worst case without this: one failed lookup persists broken
+      // (no cover/author) data until the cache naturally expires.
+      if (Object.keys(covers).length > 0) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: { trending: sorted, covers }, timestamp: Date.now(),
+          }));
+        } catch {}
+      }
     } catch {}
   }, []);
 
