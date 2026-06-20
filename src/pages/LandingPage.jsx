@@ -1,8 +1,8 @@
 import { memo, useMemo } from "react";
 import { S, shadow } from "../styles";
-import { BookCover, Footer, GoogleIcon, Button } from "../components/ui";
+import { BookCover, Footer, GoogleIcon, Button, EmailSignIn } from "../components/ui";
 
-export const LandingPage = memo(({ onBrowse, onSignIn, trending, trendingCovers, onSelectBook }) => {
+export const LandingPage = memo(({ onBrowse, onSignIn, onSignInEmail, trending, trendingCovers, onSelectBook }) => {
   // Honest, real-data social proof — sum of actual reaction counts behind the
   // currently trending books, not a fabricated user count. Only shown once
   // there's something genuine to point to.
@@ -85,9 +85,19 @@ export const LandingPage = memo(({ onBrowse, onSignIn, trending, trendingCovers,
         <div style={{ maxWidth: 480, margin: "0 auto" }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 12, letterSpacing: -0.5 }}>Ready to find your people?</div>
           <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 15, marginBottom: 24 }}>Join readers sharing their chapter-by-chapter feelings.</div>
-          <Button onClick={onSignIn} style={{ background: "#fff", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 700, color: "#db2777", display: "inline-flex", alignItems: "center", gap: 10 }}>
-            <GoogleIcon /> Continue with Google
-          </Button>
+          <div>
+            <Button onClick={onSignIn} style={{ background: "#fff", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 700, color: "#db2777", display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <GoogleIcon /> Continue with Google
+            </Button>
+          </div>
+          {onSignInEmail && (
+            <div style={{
+              marginTop: 12, display: "inline-flex", flexDirection: "column", alignItems: "center",
+              background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px",
+            }}>
+              <EmailSignIn onSubmit={onSignInEmail} />
+            </div>
+          )}
         </div>
       </div>
       <Footer />
