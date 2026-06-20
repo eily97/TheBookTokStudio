@@ -2,6 +2,24 @@ import { hasNonLatin, normalizeTitle, titlesAreSimilar } from "../utils";
 
 const OL_FIELDS = "title,author_name,cover_i,key,first_publish_year,language";
 
+// OpenLibrary is a free, unauthenticated public API and this app can burst
+// up to ~10 parallel requests to it (e.g. trending covers on the landing
+// page) — it occasionally drops/cancels one of those under that load. A
+// single quick retry recovers most of these transient failures.
+const fetchWithRetry = async (url, retries = 1) => {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r;
+  } catch (e) {
+    if (retries > 0) {
+      await new Promise((res) => setTimeout(res, 400));
+      return fetchWithRetry(url, retries - 1);
+    }
+    throw e;
+  }
+};
+
 const toBook = (b) => ({
   title:  b.title,
   author: b.author_name[0],
@@ -12,8 +30,8 @@ const toBook = (b) => ({
 
 export const searchBooks = async (q) => {
   const [r1, r2] = await Promise.all([
-    fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
-    fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
+    fetchWithRetry(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
+    fetchWithRetry(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
   ]);
   const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
   const candidates = [...(d1.docs || []), ...(d2.docs || [])]
@@ -61,7 +79,7 @@ const isEnglish = (text) => {
 
 export const fetchBookDescription = async (title, author) => {
   try {
-    const r = await fetch(
+    const r = await fetchWithRetry(
       `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&lang=eng&limit=5&fields=key,language`
     );
     const d = await r.json();
@@ -75,7 +93,7 @@ export const fetchBookDescription = async (title, author) => {
 
     for (const doc of sorted) {
       try {
-        const r2 = await fetch(`https://openlibrary.org${doc.key}.json`);
+        const r2 = await fetchWithRetry(`https://openlibrary.org${doc.key}.json`);
         const d2 = await r2.json();
         const raw = d2.description;
         const text = typeof raw === "string" ? raw : raw?.value || null;
