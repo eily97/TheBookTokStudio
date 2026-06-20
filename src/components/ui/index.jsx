@@ -81,11 +81,13 @@ export const Footer = memo(() => (
   </div>
 ));
 
-export const BookCover = memo(({ src, alt = "", width = 40, height = 56, style = {} }) => (
-  src
-    ? <img src={src} alt={alt} style={{ width, height, borderRadius: 6, objectFit: "cover", flexShrink: 0, ...style }} />
-    : <div style={{ width, height, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(height * 0.4), flexShrink: 0, ...style }}>📚</div>
-));
+export const BookCover = memo(({ src, alt = "", width = 40, height = 56, style = {} }) => {
+  const [failed, setFailed] = useState(false);
+  return (src && !failed)
+    ? <img src={src} alt={alt} onError={() => setFailed(true)}
+        style={{ width, height, borderRadius: 6, objectFit: "cover", flexShrink: 0, ...style }} />
+    : <div style={{ width, height, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(height * 0.4), flexShrink: 0, ...style }}>📚</div>;
+});
 
 export const Avatar = memo(({ src, name = "?", size = 28 }) => (
   src
