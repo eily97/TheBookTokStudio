@@ -49,9 +49,13 @@ export const getChapterCounts = async (bookTitle) => {
 };
 
 export const getRepliesForComments = async (commentIds) => {
-  const filter = commentIds.map((id) => `comment_id.eq.${id}`).join(",");
+  if (!commentIds || commentIds.length === 0) return [];
+  // `in.(...)` produces a single indexed lookup and a short, stable URL.
+  // The previous `or=(comment_id.eq.1,comment_id.eq.2,...)` form grows the URL
+  // linearly with the comment count and forces a less efficient query plan.
+  const filter = commentIds.join(",");
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/replies?or=(${filter})&order=created_at.asc`,
+    `${SUPABASE_URL}/rest/v1/replies?comment_id=in.(${filter})&order=created_at.asc`,
     { headers: H }
   );
   return r.json();

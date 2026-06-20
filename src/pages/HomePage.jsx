@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { S } from "../styles";
 import { BookCard } from "../components/book/BookCard";
 import { useBookSearch } from "../hooks/useBookSearch";
@@ -7,6 +7,20 @@ import { useTrending } from "../hooks/useTrending";
 export const HomePage = memo(({ onSelectBook }) => {
   const { query, results, searching, search } = useBookSearch();
   const { trending, trendingCovers }           = useTrending();
+
+  // Build the trending book objects once per data change instead of on every
+  // render, so the memoized BookCard children can actually bail out of
+  // re-rendering when nothing relevant changed.
+  const trendingBooks = useMemo(
+    () => trending.map(([title, count]) => {
+      const info = trendingCovers[title];
+      return {
+        count,
+        book: { title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" },
+      };
+    }),
+    [trending, trendingCovers]
+  );
 
   return (
     <div style={S.body}>
@@ -20,22 +34,20 @@ export const HomePage = memo(({ onSelectBook }) => {
 
       <div style={{ marginTop: 12 }}>
         {searching && <div style={{ ...S.muted, padding: "12px 0" }}>Searching...</div>}
-        {results.map((b, i) => (
-          <BookCard key={i} book={b} onClick={() => onSelectBook(b)} />
+        {results.map((b) => (
+          <BookCard key={b.olKey || `${b.title}|${b.author}`} book={b} onSelect={onSelectBook} />
         ))}
         {query.length > 1 && !searching && results.length === 0 && (
           <div style={{ ...S.muted, padding: "12px 0" }}>No results found.</div>
         )}
       </div>
 
-      {trending.length > 0 && query.length < 2 && (
+      {trendingBooks.length > 0 && query.length < 2 && (
         <div style={{ marginTop: 36 }}>
           <div style={S.label}>🔥 Trending this week</div>
-          {trending.map(([title, count]) => {
-            const info = trendingCovers[title];
-            const b    = { title, author: info?.author || "", cover: info?.cover || null, year: "", olKey: "" };
-            return <BookCard key={title} book={b} count={count} onClick={() => onSelectBook(b)} />;
-          })}
+          {trendingBooks.map(({ book, count }) => (
+            <BookCard key={book.title} book={book} count={count} onSelect={onSelectBook} />
+          ))}
         </div>
       )}
     </div>

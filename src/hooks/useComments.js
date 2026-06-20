@@ -11,10 +11,11 @@ export const useComments = ({ book, chapter, username }) => {
     setLoading(true);
     try {
       const cmts = await api.getComments(book.title, chapter);
-      setComments(Array.isArray(cmts) ? cmts : []);
+      const list = Array.isArray(cmts) ? cmts : [];
+      setComments(list);
 
-      if (cmts.length > 0) {
-        const rd  = await api.getRepliesForComments(cmts.map((c) => c.id));
+      if (list.length > 0) {
+        const rd  = await api.getRepliesForComments(list.map((c) => c.id));
         const map = {};
         (Array.isArray(rd) ? rd : []).forEach((r) => {
           (map[r.comment_id] ??= []).push(r);
@@ -29,17 +30,28 @@ export const useComments = ({ book, chapter, username }) => {
     setLoading(false);
   }, [book, chapter]);
 
+  // Adding a comment is the one mutation that needs the server's canonical row
+  // (id, created_at) before the user can like/reply to it, so it still does a
+  // single refresh. Every other mutation below updates local state optimistically
+  // and skips the full comments + replies refetch (the old N+1 round-trip).
   const addComment = useCallback(async ({ text, spoiler }) => {
     await api.postComment({ book: book.title, chapter, username, text, spoiler, likes: 0 });
     await refresh();
   }, [book, chapter, username, refresh]);
 
   const removeComment = useCallback(async (id) => {
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    setReplies((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     await api.deleteComment(id);
-    await refresh();
-  }, [refresh]);
+  }, []);
 
   const likeComment = useCallback(async (c) => {
+    setComments((prev) => prev.map((x) => (x.id === c.id ? { ...x, likes: x.likes + 1 } : x)));
     await api.patchCommentLikes(c.id, c.likes + 1);
     if (c.username !== username) {
       await api.postNotification({
@@ -51,12 +63,22 @@ export const useComments = ({ book, chapter, username }) => {
         comment_id: c.id,
       });
     }
-    await refresh();
-  }, [book, chapter, username, refresh]);
+  }, [book, chapter, username]);
 
   const addReply = useCallback(async (commentId, text) => {
-    await api.postReply({ comment_id: commentId, username, text });
     const parent = comments.find((c) => c.id === commentId);
+    // Optimistically show the reply with a temporary id; it's replaced with the
+    // server row on the next natural refresh (navigation / reopen).
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      comment_id: commentId,
+      username,
+      text,
+      created_at: new Date().toISOString(),
+    };
+    setReplies((prev) => ({ ...prev, [commentId]: [...(prev[commentId] || []), optimistic] }));
+
+    await api.postReply({ comment_id: commentId, username, text });
     if (parent && parent.username !== username) {
       await api.postNotification({
         username:   parent.username,
@@ -67,13 +89,18 @@ export const useComments = ({ book, chapter, username }) => {
         comment_id: commentId,
       });
     }
-    await refresh();
-  }, [book, chapter, username, comments, refresh]);
+  }, [book, chapter, username, comments]);
 
   const removeReply = useCallback(async (id) => {
+    setReplies((prev) => {
+      const next = {};
+      for (const [cid, list] of Object.entries(prev)) {
+        next[cid] = list.filter((r) => r.id !== id);
+      }
+      return next;
+    });
     await api.deleteReply(id);
-    await refresh();
-  }, [refresh]);
+  }, []);
 
   return { comments, replies, loading, refresh, addComment, removeComment, likeComment, addReply, removeReply };
 };

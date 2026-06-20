@@ -229,10 +229,7 @@ function AppContent() {
         onProfileClick={() => { setPage("profile"); profileHook.load(); bookHook.loadReadingList(); }}
         onSignOut={signOut}
         onSignIn={signIn}
-        onSignOut={signOut}
-        onSignIn={signIn}
         onSignInEmail={signInWithEmail}
-        onAdminClick={openAdmin}
         onAdminClick={openAdmin}
       />
       {showPWA && (
