@@ -92,10 +92,10 @@ export const LandingPage = memo(({ onBrowse, onSignIn, onSignInEmail, trending, 
           </div>
           {onSignInEmail && (
             <div style={{
-              marginTop: 12, display: "inline-flex", flexDirection: "column", alignItems: "center",
-              background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px",
+              marginTop: 14, display: "inline-flex", flexDirection: "column", alignItems: "center",
+              background: "rgba(255,255,255,0.18)", borderRadius: 12, padding: "10px 16px",
             }}>
-              <EmailSignIn onSubmit={onSignInEmail} />
+              <EmailSignIn onSubmit={onSignInEmail} light />
             </div>
           )}
         </div>
