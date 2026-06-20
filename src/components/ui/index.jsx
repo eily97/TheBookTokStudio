@@ -110,8 +110,8 @@ export const SignInButton = memo(({ onClick, compact = false }) => (
 // in-app browser) Google sign-in. Collapsed by default so it doesn't compete
 // visually with the primary Google button. `light` flips text/border colors
 // for use on dark or colored (e.g. gradient) backgrounds.
-export const EmailSignIn = memo(({ onSubmit, light = false }) => {
-  const [open, setOpen]     = useState(false);
+export const EmailSignIn = memo(({ onSubmit, light = false, alwaysOpen = false }) => {
+  const [open, setOpen]     = useState(alwaysOpen);
   const [email, setEmail]   = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errMsg, setErrMsg] = useState("");
