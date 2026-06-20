@@ -44,6 +44,19 @@ export const useAuth = () => {
     if (error) setAuthError(error.message);
   }, []);
 
+  // Magic-link fallback for readers who don't want to use Google — also
+  // happens to sidestep the in-app-browser OAuth block entirely, since email
+  // links work the same everywhere.
+  const signInWithEmail = useCallback(async (email) => {
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: "https://thatpart.app" },
+    });
+    if (error) setAuthError(error.message);
+    return { error };
+  }, []);
+
   const signOut = useCallback(() => supabase.auth.signOut(), []);
 
   const username = useMemo(
@@ -66,7 +79,7 @@ export const useAuth = () => {
 
   return {
     user, authLoading, username, avatar, isAdmin, joinDate,
-    signIn, signOut, authError,
+    signIn, signInWithEmail, signOut, authError,
     showBrowserWarning,
     dismissBrowserWarning: () => setShowBrowserWarning(false),
     accessToken: session?.access_token || null,
