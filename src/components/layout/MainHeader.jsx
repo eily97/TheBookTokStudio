@@ -1,45 +1,63 @@
-import { memo } from "react";
-import { S } from "../../styles";
-import { Logo, Avatar, SignInButton } from "../ui";
+import { memo, useState } from "react";
+import { S, shadow } from "../../styles";
+import { Logo, Avatar, SignInButton, EmailSignIn } from "../ui";
 
 export const MainHeader = memo(({
   user, username, avatar, isAdmin,
   unreadCount,
-  onLogoClick, onNotificationsClick, onProfileClick, onSignOut, onAdminClick, onSignIn,
-}) => (
-  <div style={S.header}>
-    <Logo onClick={onLogoClick} />
-    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-      {user ? (
-        <>
-          <button onClick={onNotificationsClick} aria-label="Notifications"
-            style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
-            🩷
-            {unreadCount > 0 && (
-              <span style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <button onClick={onProfileClick} aria-label="Your profile"
-            style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
-            <Avatar src={avatar} name={username} size={28} />
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
-          </button>
-          <button onClick={onSignOut}
-            style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>
-            Sign out
-          </button>
-          {isAdmin && (
-            <button onClick={onAdminClick} aria-label="Admin panel"
-              style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>
-              ⚙
+  onLogoClick, onNotificationsClick, onProfileClick, onSignOut, onAdminClick, onSignIn, onSignInEmail,
+}) => {
+  const [signInOpen, setSignInOpen] = useState(false);
+
+  return (
+    <div style={{ ...S.header, position: "relative" }}>
+      <Logo onClick={onLogoClick} />
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        {user ? (
+          <>
+            <button onClick={onNotificationsClick} aria-label="Notifications"
+              style={{ position: "relative", background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: "4px" }}>
+              🩷
+              {unreadCount > 0 && (
+                <span style={{ position: "absolute", top: 0, right: 0, background: "#db2777", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                  {unreadCount}
+                </span>
+              )}
             </button>
-          )}
-        </>
-      ) : (
-        <SignInButton onClick={onSignIn} compact />
-      )}
+            <button onClick={onProfileClick} aria-label="Your profile"
+              style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+              <Avatar src={avatar} name={username} size={28} />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{username}</span>
+            </button>
+            <button onClick={onSignOut}
+              style={{ background: "none", border: "1px solid #e8e8e4", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "#888" }}>
+              Sign out
+            </button>
+            {isAdmin && (
+              <button onClick={onAdminClick} aria-label="Admin panel"
+                style={{ background: "none", border: "none", color: "#ccc", fontSize: 14, cursor: "pointer" }}>
+                ⚙
+              </button>
+            )}
+          </>
+        ) : onSignInEmail ? (
+          <div style={{ position: "relative" }}>
+            <SignInButton onClick={() => setSignInOpen((v) => !v)} compact />
+            {signInOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 20,
+                background: "#fff", border: "1px solid #e8e8e4", borderRadius: 12,
+                padding: 16, width: 260, boxShadow: shadow.lg,
+              }}>
+                <SignInButton onClick={() => { setSignInOpen(false); onSignIn(); }} />
+                <EmailSignIn onSubmit={onSignInEmail} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <SignInButton onClick={onSignIn} compact />
+        )}
+      </div>
     </div>
-  </div>
-));
+  );
+});
