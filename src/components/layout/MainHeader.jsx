@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { S, shadow } from "../../styles";
+import { S, shadow, colors } from "../../styles";
 import { Logo, Avatar, SignInButton, EmailSignIn } from "../ui";
 
 export const MainHeader = memo(({
@@ -44,14 +44,36 @@ export const MainHeader = memo(({
           <div style={{ position: "relative" }}>
             <SignInButton onClick={() => setSignInOpen((v) => !v)} compact />
             {signInOpen && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 20,
-                background: "#fff", border: "1px solid #e8e8e4", borderRadius: 12,
-                padding: 16, width: 260, boxShadow: shadow.lg,
-              }}>
-                <SignInButton onClick={() => { setSignInOpen(false); onSignIn(); }} />
-                <EmailSignIn onSubmit={onSignInEmail} />
-              </div>
+              <>
+                {/* click-away overlay */}
+                <div onClick={() => setSignInOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 19 }} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 12px)", right: 0, zIndex: 20,
+                  background: "#fff", border: "1px solid #f1f1ee", borderRadius: 16,
+                  padding: "20px 18px", width: 280, boxShadow: shadow.lg,
+                }}>
+                  {/* pointer triangle */}
+                  <div style={{
+                    position: "absolute", top: -7, right: 22, width: 14, height: 14,
+                    background: "#fff", borderLeft: "1px solid #f1f1ee", borderTop: "1px solid #f1f1ee",
+                    transform: "rotate(45deg)",
+                  }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: colors.textPrimary, marginBottom: 2, textAlign: "center" }}>
+                    Welcome to thatpart 🩷
+                  </div>
+                  <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 16, textAlign: "center" }}>
+                    Sign in to share your reactions
+                  </div>
+                  <SignInButton onClick={() => { setSignInOpen(false); onSignIn(); }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0" }}>
+                    <div style={{ flex: 1, height: 1, background: colors.border }} />
+                    <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600 }}>OR</span>
+                    <div style={{ flex: 1, height: 1, background: colors.border }} />
+                  </div>
+                  <EmailSignIn onSubmit={onSignInEmail} alwaysOpen />
+                </div>
+              </>
             )}
           </div>
         ) : (
