@@ -27,7 +27,16 @@ export const searchBooks = async (q) => {
   for (const c of candidates) {
     const key      = `${normalizeTitle(c.title)}|${c.author.toLowerCase().split(" ")[0]}`;
     const existing = groups.get(key);
-    if (!existing || c.title.length < existing.title.length) groups.set(key, c);
+    // OpenLibrary's result order for the same title isn't guaranteed stable
+    // between requests — without this, whichever edition happened to come
+    // back first "won," even if a better edition (one with an actual cover
+    // image) was sitting right next to it. Always prefer a candidate that
+    // has a cover over one that doesn't.
+    const better =
+      !existing ||
+      (!!c.cover && !existing.cover) ||
+      (!!c.cover === !!existing.cover && c.title.length < existing.title.length);
+    if (better) groups.set(key, c);
   }
   const deduped = [];
   for (const [, item] of groups) {
