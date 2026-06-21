@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import * as api from "../api/comments";
 
-export const useComments = ({ book, chapter, username }) => {
+export const useComments = ({ book, chapter, username, accessToken }) => {
   const [comments, setComments] = useState([]);
   const [replies,  setReplies]  = useState({});
   const [loading,  setLoading]  = useState(false);
@@ -30,9 +30,9 @@ export const useComments = ({ book, chapter, username }) => {
   }, [book, chapter]);
 
   const addComment = useCallback(async ({ text, spoiler }) => {
-    await api.postComment({ book: book.title, chapter, username, text, spoiler, likes: 0 });
+    await api.postComment(accessToken, { book: book.title, chapter, text, spoiler });
     await refresh();
-  }, [book, chapter, username, refresh]);
+  }, [book, chapter, accessToken, refresh]);
 
   const removeComment = useCallback(async (id) => {
     await api.deleteComment(id);
@@ -55,7 +55,7 @@ export const useComments = ({ book, chapter, username }) => {
   }, [book, chapter, username, refresh]);
 
   const addReply = useCallback(async (commentId, text) => {
-    await api.postReply({ comment_id: commentId, username, text });
+    await api.postReply(accessToken, { comment_id: commentId, text });
     const parent = comments.find((c) => c.id === commentId);
     if (parent && parent.username !== username) {
       await api.postNotification({
@@ -68,7 +68,7 @@ export const useComments = ({ book, chapter, username }) => {
       });
     }
     await refresh();
-  }, [book, chapter, username, comments, refresh]);
+  }, [book, chapter, username, accessToken, comments, refresh]);
 
   const removeReply = useCallback(async (id) => {
     await api.deleteReply(id);
