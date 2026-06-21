@@ -64,7 +64,7 @@ export const ProfilePage = memo(({
                 <div><span style={{ fontWeight: 600, fontSize: 14 }}>{c.book}</span><span style={{ ...S.muted, marginLeft: 8 }}>· Chapter {c.chapter}</span></div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={S.muted}>{new Date(c.created_at).toLocaleDateString("en-US")}</span>
-                  <button onClick={() => onDeleteComment(c.id)} style={{ ...S.iconBtn, color: "#f87171" }}>🗑</button>
+                  <button onClick={() => onDeleteComment(c.id)} aria-label="Delete comment" style={{ ...S.iconBtn, color: "#f87171" }}>🗑</button>
                 </div>
               </div>
               <div style={{ fontSize: 15, lineHeight: 1.6, color: "#333" }}>
@@ -94,6 +94,7 @@ export const ProfilePage = memo(({
                 <div style={S.muted}>{item.author}</div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); onRemoveFromReadingList(item.id); }}
+  aria-label="Remove from reading list" style={{ ...S.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
                 style={{ ...S.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
             </div>
           ))}
