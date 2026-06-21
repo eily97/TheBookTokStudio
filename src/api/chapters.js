@@ -1,5 +1,5 @@
 import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
-import { getAuthHeaders } from "./authHeaders";
+import { getAuthHeaders, getCurrentUserId } from "./authHeaders";
 
 const callAdmin = async (token, action, payload) => {
   const r = await fetch("/api/admin-chapters", {
@@ -51,10 +51,10 @@ export const getReadingList = async (username) => {
 };
 
 export const addToReadingList = async (payload) => {
-  const headers = await getAuthHeaders();
+  const [headers, userId] = await Promise.all([getAuthHeaders(), getCurrentUserId()]);
   return fetch(`${SUPABASE_URL}/rest/v1/reading_list`, {
     method: "POST", headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, user_id: userId }),
   });
 };
 
