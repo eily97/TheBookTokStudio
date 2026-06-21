@@ -43,8 +43,9 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'thatpart <onboarding@resend.dev>',
+        from: 'thatpart <hello@thatpart.app>',
         to: 'yarenpekgil97@gmail.com',
+        reply_to: 'thebooktokstudio@protonmail.com',
         subject: `New chapter name suggestion — ${safeBook}`,
         html: `<p><b>@${safeSuggestedBy}</b> suggested a name for <b>${safeBook} Chapter ${safeChapter}</b>:</p><p style="font-size:18px">"${safeName}"</p><p>Log in to approve or reject: <a href="https://thatpart.app">thatpart.app</a></p>`
       }),
