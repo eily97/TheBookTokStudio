@@ -11,14 +11,21 @@ export const getComments = async (bookTitle, chapter) => {
   return r.json();
 };
 
-// Writes/ownership-sensitive actions use the caller's real session, so RLS
-// (auth.jwt()) can correctly tell who's asking.
-export const postComment = async (payload) => {
-  const headers = await getAuthHeaders();
-  return fetch(`${SUPABASE_URL}/rest/v1/comments`, {
-    method: "POST", headers,
-    body: JSON.stringify(payload),
+// Writes go through /api/post-comment now — a server-verified endpoint that
+// enforces rate limiting and the profanity filter using the database (not
+// localStorage), so it can't be bypassed from devtools. Direct REST insert
+// access for these two tables has been revoked at the RLS level.
+export const postComment = async (token, { book, chapter, text, spoiler }) => {
+  const r = await fetch("/api/post-comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, action: "comment", book, chapter, text, spoiler }),
   });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data?.error || "Could not post comment.");
+  }
+  return r.json();
 };
 
 export const deleteComment = async (id) => {
@@ -40,10 +47,13 @@ export const getCommentsByUser = (username) =>
     { headers: H }
   ).then((r) => r.json());
 
+// Aggregated server-side via an RPC function (chapter_comment_counts) instead
+// of pulling every comment row and counting in the browser — the old version
+// got noticeably heavier as a book's comment count grew into the thousands.
 export const getChapterCounts = async (bookTitle) => {
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/comments?book=eq.${encodeURIComponent(bookTitle)}&select=chapter`,
-    { headers: H }
+    `${SUPABASE_URL}/rest/v1/rpc/chapter_comment_counts`,
+    { method: "POST", headers: H, body: JSON.stringify({ p_book: bookTitle }) }
   );
   return r.json();
 };
@@ -57,12 +67,17 @@ export const getRepliesForComments = async (commentIds) => {
   return r.json();
 };
 
-export const postReply = async (payload) => {
-  const headers = await getAuthHeaders();
-  return fetch(`${SUPABASE_URL}/rest/v1/replies`, {
-    method: "POST", headers,
-    body: JSON.stringify(payload),
+export const postReply = async (token, { comment_id, text }) => {
+  const r = await fetch("/api/post-comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, action: "reply", commentId: comment_id, text }),
   });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data?.error || "Could not post reply.");
+  }
+  return r.json();
 };
 
 export const deleteReply = async (id) => {
