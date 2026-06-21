@@ -9,7 +9,7 @@ const ReplyItem = memo(({ reply, canDelete, onDelete }) => (
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ ...S.muted, fontSize: 11 }}>{new Date(reply.created_at).toLocaleDateString("en-US")}</span>
         {canDelete && (
-          <button onClick={() => onDelete(reply.id)} style={{ ...S.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>
+          <button onClick={() => onDelete(reply.id)} aria-label="Delete reply" style={{ ...S.iconBtn, color: "#f87171", fontSize: 11 }}>🗑</button>
         )}
       </div>
     </div>
@@ -46,7 +46,7 @@ export const CommentCard = memo(({ comment, replies = [], username, onLike, onDe
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={S.muted}>{new Date(comment.created_at).toLocaleDateString("en-US")}</span>
           {username && comment.username === username && (
-            <button onClick={() => onDelete(comment.id)} style={{ ...S.iconBtn, color: "#f87171" }}>🗑</button>
+            <button onClick={() => onDelete(comment.id)} aria-label="Delete comment" style={{ ...S.iconBtn, color: "#f87171" }}>🗑</button>
           )}
         </div>
       </div>
