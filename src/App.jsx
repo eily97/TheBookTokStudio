@@ -79,9 +79,6 @@ const AuthErrorBanner = ({ message, onDismiss }) => (
 function AppContent() {
   const {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
-    accessToken,
-    authError, showBrowserWarning, dismissBrowserWarning,
-  user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
     needsUsername, setUsername,
     accessToken,
     authError, showBrowserWarning, dismissBrowserWarning,
@@ -182,6 +179,7 @@ function AppContent() {
   );
 
   if (authLoading || resolvingLink) return <AuthSkeleton />;
+
   if (needsUsername) return (
     <ChooseUsernameModal
       defaultValue={user.user_metadata?.name || ""}
@@ -240,10 +238,7 @@ function AppContent() {
         onProfileClick={() => { setPage("profile"); profileHook.load(); bookHook.loadReadingList(); }}
         onSignOut={signOut}
         onSignIn={signIn}
-        onSignOut={signOut}
-        onSignIn={signIn}
         onSignInEmail={signInWithEmail}
-        onAdminClick={openAdmin}
         onAdminClick={openAdmin}
       />
       {showPWA && (
