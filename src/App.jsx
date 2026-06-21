@@ -72,7 +72,7 @@ const AuthErrorBanner = ({ message, onDismiss }) => (
     justifyContent: "center", gap: 12, textAlign: "center",
   }}>
     <span>Sign-in failed: {message}</span>
-    <button onClick={onDismiss} style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontWeight: 700 }}>✕</button>
+    <button onClick={onDismiss} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontWeight: 700 }}>✕</button>
   </div>
 );
 
