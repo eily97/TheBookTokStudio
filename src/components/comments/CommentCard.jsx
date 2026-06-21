@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { S } from "../../styles";
+import { Button } from "../ui";
 
 const ReplyItem = memo(({ reply, canDelete, onDelete }) => (
   <div style={{ marginBottom: 10 }}>
@@ -17,15 +18,25 @@ const ReplyItem = memo(({ reply, canDelete, onDelete }) => (
 ));
 
 export const CommentCard = memo(({ comment, replies = [], username, onLike, onDelete, onReply, onDeleteReply, onShare }) => {
-  const [revealed,  setRevealed]  = useState(false);
-  const [replyOpen, setReplyOpen] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const [revealed,    setRevealed]    = useState(false);
+  const [replyOpen,   setReplyOpen]   = useState(false);
+  const [replyText,   setReplyText]   = useState("");
+  const [isSubmitting, setSubmitting] = useState(false);
+  const [replyError,  setReplyError]  = useState(null);
 
-  const handleReply = () => {
-    if (!replyText.trim()) return;
-    onReply(comment.id, replyText.trim());
-    setReplyText("");
-    setReplyOpen(false);
+  const handleReply = async () => {
+    if (!replyText.trim() || isSubmitting) return;
+    setSubmitting(true);
+    setReplyError(null);
+    try {
+      await onReply(comment.id, replyText.trim());
+      setReplyText("");
+      setReplyOpen(false);
+    } catch (err) {
+      setReplyError(err?.message || "Could not post reply. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -84,11 +95,19 @@ export const CommentCard = memo(({ comment, replies = [], username, onLike, onDe
       )}
 
       {replyOpen && (
-        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-          <input style={{ ...S.input, flex: 1, padding: "8px 12px", fontSize: 14 }}
-            placeholder="Write a reply..." value={replyText}
-            onChange={(e) => setReplyText(e.target.value)} />
-          <button style={S.btnPink} onClick={handleReply}>Send</button>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input style={{ ...S.input, flex: 1, padding: "8px 12px", fontSize: 14, marginBottom: 0 }}
+              placeholder="Write a reply..." value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleReply(); }} />
+            <Button style={{ ...S.btnPink, marginBottom: 0 }} disabled={isSubmitting || !replyText.trim()} onClick={handleReply}>
+              {isSubmitting ? "..." : "Send"}
+            </Button>
+          </div>
+          {replyError && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#b45309" }}>⏳ {replyError}</div>
+          )}
         </div>
       )}
     </div>
