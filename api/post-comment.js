@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       if (!commentId) return res.status(400).json({ error: 'Missing comment id' });
       const { data, error } = await supabaseAdmin
         .from('replies')
-        .insert({ comment_id: commentId, username, text: text.trim() })
+        .insert({ comment_id: commentId, username, user_id: user.id, text: text.trim() })
         .select()
         .single();
       if (error) throw error;
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       if (!book || chapter === undefined) return res.status(400).json({ error: 'Missing book/chapter' });
       const { data, error } = await supabaseAdmin
         .from('comments')
-        .insert({ book, chapter, username, text: text.trim(), spoiler: !!spoiler, likes: 0 })
+        .insert({ book, chapter, username, user_id: user.id, text: text.trim(), spoiler: !!spoiler, likes: 0 })
         .select()
         .single();
       if (error) throw error;
