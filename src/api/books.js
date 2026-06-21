@@ -1,11 +1,8 @@
 import { hasNonLatin, normalizeTitle, titlesAreSimilar } from "../utils";
+import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
 
 const OL_FIELDS = "title,author_name,cover_i,key,first_publish_year,language";
 
-// OpenLibrary is a free, unauthenticated public API and this app can burst
-// up to ~10 parallel requests to it (e.g. trending covers on the landing
-// page) — it occasionally drops/cancels one of those under that load. A
-// single quick retry recovers most of these transient failures.
 const fetchWithRetry = async (url, retries = 1) => {
   try {
     const r = await fetch(url);
@@ -45,11 +42,6 @@ export const searchBooks = async (q) => {
   for (const c of candidates) {
     const key      = `${normalizeTitle(c.title)}|${c.author.toLowerCase().split(" ")[0]}`;
     const existing = groups.get(key);
-    // OpenLibrary's result order for the same title isn't guaranteed stable
-    // between requests — without this, whichever edition happened to come
-    // back first "won," even if a better edition (one with an actual cover
-    // image) was sitting right next to it. Always prefer a candidate that
-    // has a cover over one that doesn't.
     const better =
       !existing ||
       (!!c.cover && !existing.cover) ||
@@ -77,7 +69,7 @@ const isEnglish = (text) => {
   return true;
 };
 
-export const fetchBookDescription = async (title, author) => {
+const fetchDescriptionFromOpenLibrary = async (title, author) => {
   try {
     const r = await fetchWithRetry(
       `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&lang=eng&limit=5&fields=key,language`
@@ -102,4 +94,50 @@ export const fetchBookDescription = async (title, author) => {
     }
   } catch {}
   return null;
+};
+
+// Every visitor to a book page used to trigger a fresh OpenLibrary lookup —
+// same book, same description, refetched over and over. This checks a
+// Supabase cache first (book_metadata.description) and only falls back to
+// OpenLibrary on a true cache miss, then writes the result back for next
+// time. Cache failures are non-fatal — worst case, behaves like before.
+export const fetchBookDescription = async (title, author) => {
+  let rowExists = false;
+
+  try {
+    const cacheRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(title)}&select=description`,
+      { headers: H }
+    );
+    const cacheRows = await cacheRes.json();
+    if (Array.isArray(cacheRows) && cacheRows.length > 0) {
+      rowExists = true;
+      if (cacheRows[0]?.description) return cacheRows[0].description;
+    }
+  } catch {
+    // Cache read failed — fall through to a live OpenLibrary fetch.
+  }
+
+  const desc = await fetchDescriptionFromOpenLibrary(title, author);
+
+  if (desc) {
+    try {
+      if (rowExists) {
+        await fetch(`${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(title)}`, {
+          method: "PATCH", headers: H,
+          body: JSON.stringify({ description: desc }),
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/book_metadata`, {
+          method: "POST", headers: H,
+          body: JSON.stringify({ book_title: title, description: desc }),
+        });
+      }
+    } catch {
+      // Caching is best-effort — a failed write just means we'll fetch
+      // from OpenLibrary again next time, same as before this change.
+    }
+  }
+
+  return desc;
 };
