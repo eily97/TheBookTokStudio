@@ -23,7 +23,7 @@ export const useTrending = () => {
     } catch {}
 
     try {
-      const rows = await getTrendingBooks(7, 5);
+      const rows = await getTrendingBooks(90, 5);
       if (!Array.isArray(rows)) return;
 
       const sorted = rows.map((r) => [r.book, r.cnt]);
