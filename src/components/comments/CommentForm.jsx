@@ -31,8 +31,8 @@ export const CommentForm = memo(({ user, username, onPost, onSignIn, onSignInEma
       setText(""); setSpoiler(false);
       setPostSuccess(true);
       setTimeout(() => setPostSuccess(false), 3000);
-    } catch {
-      setFormError("Something went wrong posting your comment. Please try again.");
+    } catch (err) {
+      setFormError(err?.message || "Something went wrong posting your comment. Please try again.");
     } finally {
       setSubmitting(false);
     }
