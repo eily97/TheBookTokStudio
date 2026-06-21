@@ -1,13 +1,17 @@
 import { memo, useState } from "react";
 import { S } from "../styles";
 import { BookCover, Avatar } from "../components/ui";
+import { DeleteAccountModal } from "../components/DeleteAccountModal";
 
 export const ProfilePage = memo(({
   username, avatar, joinDate,
   myComments, loading, totalLikes, booksRead, mostActiveBook,
   readingList, onDeleteComment, onGoBook, onRemoveFromReadingList, onRefreshReadingList,
+  onDeleteAccount,
 }) => {
   const [tab, setTab] = useState("comments");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   return (
     <div style={S.body}>
       <div style={{ background: "linear-gradient(135deg, #fff8fb, #fafaf8)", borderRadius: 16, padding: 20, marginBottom: 20, border: "1.5px solid #fce7f3" }}>
@@ -94,6 +98,26 @@ export const ProfilePage = memo(({
             </div>
           ))}
         </>
+      )}
+
+      {onDeleteAccount && (
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid #e8e8e4" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#bbb", letterSpacing: 0.5, marginBottom: 10 }}>DANGER ZONE</div>
+          <button onClick={() => setShowDeleteModal(true)} style={{
+            background: "none", border: "1px solid #fecaca", borderRadius: 10,
+            padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            Delete account
+          </button>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          username={username}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={onDeleteAccount}
+        />
       )}
     </div>
   );
