@@ -94,8 +94,7 @@ export const ProfilePage = memo(({
                 <div style={S.muted}>{item.author}</div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); onRemoveFromReadingList(item.id); }}
-  aria-label="Remove from reading list" style={{ ...S.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
-                style={{ ...S.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
+                aria-label="Remove from reading list" style={{ ...S.iconBtn, color: "#f87171", fontSize: 18 }}>×</button>
             </div>
           ))}
         </>
