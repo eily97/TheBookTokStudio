@@ -38,9 +38,9 @@ export const useBook = (username) => {
     if (countsRaw.status === "fulfilled") {
       const counts = {};
       let total = 0;
-      (Array.isArray(countsRaw.value) ? countsRaw.value : []).forEach((c) => {
-        counts[c.chapter] = (counts[c.chapter] || 0) + 1;
-        total++;
+      (Array.isArray(countsRaw.value) ? countsRaw.value : []).forEach((row) => {
+        counts[row.chapter] = row.cnt;
+        total += row.cnt;
       });
       setChapterCounts(counts);
       setBookTotal(total);
