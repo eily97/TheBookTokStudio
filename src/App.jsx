@@ -81,8 +81,11 @@ function AppContent() {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
     accessToken,
     authError, showBrowserWarning, dismissBrowserWarning,
-  } = useAuth();user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
+  user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
     needsUsername, setUsername,
+    accessToken,
+    authError, showBrowserWarning, dismissBrowserWarning,
+  } = useAuth();
 
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const deepLinkBook  = initialParams.get("book");
