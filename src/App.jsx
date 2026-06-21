@@ -98,9 +98,6 @@ function AppContent() {
   const [pending,   setPending]   = useState([]);
   const [dismissedAuthError, setDismissedAuthError] = useState(false);
 
-  // Shared links and any future sitemap entries point to ?book=...&chapter=...
-  // URLs. Without this, opening one of those links just shows the homepage —
-  // the "Share" button's copied link silently didn't work before this fix.
   useEffect(() => {
     if (!deepLinkBook) return;
     const chapterParam = initialParams.get("chapter");
@@ -121,7 +118,6 @@ function AppContent() {
           }
         }
       } catch {
-        // Resolution failed — fall back to the homepage rather than getting stuck.
       } finally {
         setResolvingLink(false);
       }
@@ -164,6 +160,14 @@ function AppContent() {
     await deleteComment(id);
     profileHook.remove(id);
   }, [profileHook]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    const { deleteAccount } = await import("./api/account");
+    const { error } = await deleteAccount(accessToken);
+    if (error) return { error };
+    await signOut();
+    return { error: null };
+  }, [accessToken, signOut]);
 
   const seo = useMemo(() =>
     buildSEO({ page, book, chapter, chapterNames: bookHook.chapterNames, username }),
@@ -257,6 +261,7 @@ function AppContent() {
             onDeleteComment={handleDeleteComment} onGoBook={goBook}
             onRemoveFromReadingList={bookHook.removeBook}
             onRefreshReadingList={bookHook.loadReadingList}
+            onDeleteAccount={handleDeleteAccount}
           />
         )}
         {page === "home" && <HomePage onSelectBook={goBook} />}
@@ -266,7 +271,7 @@ function AppContent() {
         {page === "comments" && book && (
           <CommentsPage
             book={book} chapter={chapter} chapterNames={bookHook.chapterNames}
-            user={user} username={username}
+            user={user} username={username} accessToken={accessToken}
             onBack={() => setPage("book")}
             onOpenShareCard={setShareCard}
             onSignIn={signIn}
