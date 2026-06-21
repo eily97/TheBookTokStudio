@@ -56,13 +56,16 @@ export const checkRateLimit = (username, limit, windowMs) => {
 export const buildSEO = ({ page, book, chapter, chapterNames, username }) => {
   if (page === "comments" && book && chapter) {
     const chName = chapterNames[chapter];
+    // Kept under ~55-60 characters so Google doesn't truncate it in search
+    // results — the old version (book + "Chapter by Chapter Discussions")
+    // ran to 60-75+ characters and always got cut off with "...".
     return {
-      title: `${book.title} Chapter ${chapter}${chName ? `: ${chName}` : ""} — Reader Discussion | thatpart`,
+      title: `${book.title} Ch. ${chapter}${chName ? `: ${chName}` : ""} — thatpart`,
       desc:  `What did readers feel in Chapter ${chapter} of "${book.title}" by ${book.author}? Read spoiler-free reactions and share your own thoughts.`,
     };
   }
   if (page === "book" && book) return {
-    title: `${book.title} by ${book.author} — Chapter by Chapter Discussions | thatpart`,
+    title: `${book.title} — Chapter Discussions | thatpart`,
     desc:  `Discuss "${book.title}" chapter by chapter. Spoiler-free reader reactions, feelings, and discussions for every chapter.`,
   };
   if (page === "home") return {
@@ -85,9 +88,20 @@ export const buildCanonical = ({ page, book, chapter }) => {
   return "https://thatpart.app/";
 };
 
+const buildBreadcrumb = (items) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: item.name,
+    item: item.url,
+  })),
+});
+
 export const buildStructuredData = ({ page, book, chapter, commentCount }) => {
   if (page === "book" && book) {
-    return {
+    const bookSchema = {
       "@context": "https://schema.org",
       "@type": "Book",
       name: book.title,
@@ -95,9 +109,14 @@ export const buildStructuredData = ({ page, book, chapter, commentCount }) => {
       image: book.cover || undefined,
       url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}`,
     };
+    const breadcrumb = buildBreadcrumb([
+      { name: "thatpart", url: "https://thatpart.app/" },
+      { name: book.title, url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}` },
+    ]);
+    return [bookSchema, breadcrumb];
   }
   if (page === "comments" && book && chapter) {
-    return {
+    const discussionSchema = {
       "@context": "https://schema.org",
       "@type": "DiscussionForumPosting",
       headline: `${book.title} — Chapter ${chapter} reader reactions`,
@@ -105,6 +124,12 @@ export const buildStructuredData = ({ page, book, chapter, commentCount }) => {
       url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}&chapter=${chapter}`,
       commentCount: commentCount ?? undefined,
     };
+    const breadcrumb = buildBreadcrumb([
+      { name: "thatpart", url: "https://thatpart.app/" },
+      { name: book.title, url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}` },
+      { name: `Chapter ${chapter}`, url: `https://thatpart.app/?book=${encodeURIComponent(book.title)}&chapter=${chapter}` },
+    ]);
+    return [discussionSchema, breadcrumb];
   }
   return null;
 };
