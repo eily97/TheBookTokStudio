@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getRecentBookComments } from "../api/chapters";
+import { getTrendingBooks } from "../api/chapters";
 import { searchBooks } from "../api/books";
 
 const CACHE_KEY = "trending_cache";
@@ -23,12 +23,10 @@ export const useTrending = () => {
     } catch {}
 
     try {
-      const d = await getRecentBookComments(200);
-      if (!Array.isArray(d)) return;
+      const rows = await getTrendingBooks(7, 5);
+      if (!Array.isArray(rows)) return;
 
-      const counts = {};
-      d.forEach((c) => { counts[c.book] = (counts[c.book] || 0) + 1; });
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const sorted = rows.map((r) => [r.book, r.cnt]);
       setTrending(sorted);
 
       const entries = await Promise.all(
@@ -43,10 +41,6 @@ export const useTrending = () => {
       const covers = Object.fromEntries(entries.filter(Boolean));
       setCovers(covers);
 
-      // Only cache when we actually resolved at least some covers — a transient
-      // OpenLibrary hiccup shouldn't get "frozen" as the trending state for 30
-      // minutes. Worst case without this: one failed lookup persists broken
-      // (no cover/author) data until the cache naturally expires.
       if (Object.keys(covers).length > 0) {
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify({
