@@ -96,11 +96,27 @@ export const getNotifications = async (username) => {
   return r.json();
 };
 
+// The notification's user_id needs to be the *recipient's* id, not the
+// sender's — looked up from the usernames table (their claimed name). If
+// they haven't claimed a name yet (pre-dates that feature, or never logged
+// back in), this just stays null and the username-based RLS fallback
+// still covers them.
 export const postNotification = async (payload) => {
   const headers = await getAuthHeaders();
+  let recipientUserId = null;
+  try {
+    const key = payload.username.trim().toLowerCase();
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/usernames?username_key=eq.${encodeURIComponent(key)}&select=user_id`,
+      { headers: H }
+    );
+    const rows = await r.json();
+    recipientUserId = Array.isArray(rows) && rows[0]?.user_id ? rows[0].user_id : null;
+  } catch {}
+
   return fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
     method: "POST", headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, user_id: recipientUserId }),
   });
 };
 
