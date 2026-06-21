@@ -16,3 +16,11 @@ export const getAuthHeaders = async () => {
     Prefer: "return=representation",
   };
 };
+
+// Used to stamp new rows (reading list, etc.) with the real auth user id
+// instead of only a username string, so RLS can rely on auth.uid() going
+// forward rather than text-matching a display name.
+export const getCurrentUserId = async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user?.id || null;
+};
