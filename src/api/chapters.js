@@ -1,10 +1,6 @@
 import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
 import { getAuthHeaders } from "./authHeaders";
 
-// These three call the verified /api/admin-chapters endpoint instead of
-// hitting Supabase directly — the table itself no longer trusts the public
-// anon key for moderation actions (see DROP POLICY change), only a verified
-// admin session can approve/reject/delete chapter name suggestions.
 const callAdmin = async (token, action, payload) => {
   const r = await fetch("/api/admin-chapters", {
     method: "POST",
@@ -45,8 +41,6 @@ export const postChapterCountSuggestion = (payload) =>
     body: JSON.stringify(payload),
   });
 
-// Reading list is personal — always go through the real session so RLS can
-// restrict it to its owner.
 export const getReadingList = async (username) => {
   const headers = await getAuthHeaders();
   const r = await fetch(
@@ -71,11 +65,13 @@ export const removeFromReadingList = async (id) => {
   });
 };
 
-export const getRecentBookComments = (limit = 200) =>
-  fetch(
-    `${SUPABASE_URL}/rest/v1/comments?select=book&order=created_at.desc&limit=${limit}`,
-    { headers: H }
-  ).then((r) => r.json());
+// Aggregated server-side via an RPC function (trending_books) instead of
+// pulling the last N raw comment rows and grouping them in the browser.
+export const getTrendingBooks = (daysBack = 7, limitN = 5) =>
+  fetch(`${SUPABASE_URL}/rest/v1/rpc/trending_books`, {
+    method: "POST", headers: H,
+    body: JSON.stringify({ days_back: daysBack, limit_n: limitN }),
+  }).then((r) => r.json());
 
 export const notifyAdmin = (payload) =>
   fetch("/api/notify", {
