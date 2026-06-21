@@ -15,6 +15,7 @@ import { PWABanner }        from "./components/layout/PWABanner";
 import { Footer }           from "./components/ui";
 import { InAppBrowserModal } from "./components/layout/InAppBrowserModal";
 import { ErrorBoundary }    from "./components/layout/ErrorBoundary";
+import { ChooseUsernameModal } from "./components/ChooseUsernameModal";
 
 // LandingPage is the very first thing most visitors see, so it stays in the
 // main bundle. Everything below is only needed after an interaction, so it's
@@ -80,7 +81,8 @@ function AppContent() {
     user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
     accessToken,
     authError, showBrowserWarning, dismissBrowserWarning,
-  } = useAuth();
+  } = useAuth();user, authLoading, username, avatar, isAdmin, joinDate, signIn, signInWithEmail, signOut,
+    needsUsername, setUsername,
 
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const deepLinkBook  = initialParams.get("book");
@@ -177,6 +179,12 @@ function AppContent() {
   );
 
   if (authLoading || resolvingLink) return <AuthSkeleton />;
+  if (needsUsername) return (
+    <ChooseUsernameModal
+      defaultValue={user.user_metadata?.name || ""}
+      onSubmit={setUsername}
+    />
+  );
 
   if (page === "landing") return (
     <>
