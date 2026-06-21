@@ -178,8 +178,8 @@ function AppContent() {
     [page, book, chapter]
   );
   const structuredData = useMemo(() =>
-    buildStructuredData({ page, book, chapter }),
-    [page, book, chapter]
+    buildStructuredData({ page, book, chapter, commentCount: bookHook.chapterCounts?.[chapter] }),
+    [page, book, chapter, bookHook.chapterCounts]
   );
 
   if (authLoading || resolvingLink) return <AuthSkeleton />;
