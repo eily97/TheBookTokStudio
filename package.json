@@ -1,6 +1,7 @@
 {
   "name": "thebooktokstudio",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/generate-sitemap.mjs && vite build",
