@@ -28,13 +28,28 @@ const toBook = (b) => ({
 // Supabase book_cache'te ara
 const searchCache = async (q) => {
   try {
+    const lower = q.toLowerCase();
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/book_cache?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=10`,
+      `${SUPABASE_URL}/rest/v1/book_cache?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=40`,
       { headers: H }
     );
     if (!r.ok) return [];
     const rows = await r.json();
-    return Array.isArray(rows) ? rows.map(toBook) : [];
+    if (!Array.isArray(rows)) return [];
+
+    return rows
+      .map(toBook)
+      .sort((a, b) => {
+        const score = (book) => {
+          const t = book.title.toLowerCase();
+          if (t === lower) return 0;
+          if (t.startsWith(lower)) return 1;
+          if (t.includes(lower)) return 2;
+          return 3;
+        };
+        return score(a) - score(b);
+      })
+      .slice(0, 15);
   } catch {
     return [];
   }
