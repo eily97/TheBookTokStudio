@@ -86,3 +86,17 @@ export const searchBooks = async (q) => {
 
   return results;
 };
+// useBook.js tarafından kullanılır — kitap açıklamasını book_metadata'dan çeker
+export const fetchBookDescription = async (title) => {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(title)}&select=description&limit=1`,
+      { headers: H }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return Array.isArray(rows) && rows[0]?.description ? rows[0].description : null;
+  } catch {
+    return null;
+  }
+};
