@@ -69,7 +69,7 @@ const cacheResults = (books) => {
         ol_key:    b.olKey,
         year:      String(b.year ?? ""),
       }),
-    }).catch(() => {}); // sessizce ignore et
+    }).then(r => console.log('cache-book:', r.status)).catch(e => console.error('cache-book error:', e));
   });
 };
 
