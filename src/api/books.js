@@ -19,125 +19,70 @@ const fetchWithRetry = async (url, retries = 1) => {
 
 const toBook = (b) => ({
   title:  b.title,
-  author: b.author_name[0],
-  cover:  b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
-  year:   b.first_publish_year || "",
-  olKey:  b.key || "",
+  author: b.author_name?.[0] ?? b.author ?? "",
+  cover:  b.cover_url ?? (b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null),
+  year:   b.first_publish_year ?? b.year ?? "",
+  olKey:  b.key ?? b.ol_key ?? "",
 });
 
-export const searchBooks = async (q) => {
+// Supabase book_cache'te ara
+const searchCache = async (q) => {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/book_cache?or=(title.ilike.*${encodeURIComponent(q)}*,author.ilike.*${encodeURIComponent(q)}*)&limit=10`,
+      { headers: H }
+    );
+    if (!r.ok) return [];
+    const rows = await r.json();
+    return Array.isArray(rows) ? rows.map(toBook) : [];
+  } catch {
+    return [];
+  }
+};
+
+// OpenLibrary'den ara
+const searchOpenLibrary = async (q) => {
   const [r1, r2] = await Promise.all([
     fetchWithRetry(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
     fetchWithRetry(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
   ]);
   const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-  const candidates = [...(d1.docs || []), ...(d2.docs || [])]
+  return [...(d1.docs || []), ...(d2.docs || [])]
     .filter((b) => {
       const title  = b.title?.trim();
       const author = b.author_name?.[0]?.trim();
       return title && author && !hasNonLatin(title) && !hasNonLatin(author);
     })
     .map(toBook);
-  const groups = new Map();
-  for (const c of candidates) {
-    const key      = `${normalizeTitle(c.title)}|${c.author.toLowerCase().split(" ")[0]}`;
-    const existing = groups.get(key);
-    const better =
-      !existing ||
-      (!!c.cover && !existing.cover) ||
-      (!!c.cover === !!existing.cover && c.title.length < existing.title.length);
-    if (better) groups.set(key, c);
-  }
-  const deduped = [];
-  for (const [, item] of groups) {
-    const isDuplicate = deduped.some(
-      (ex) =>
-        titlesAreSimilar(ex.title, item.title) &&
-        ex.author.toLowerCase().split(" ").some((w) => item.author.toLowerCase().includes(w))
-    );
-    if (!isDuplicate) {
-      deduped.push(item);
-      if (deduped.length >= 7) break;
-    }
-  }
-  return deduped;
 };
 
-const isEnglish = (text) => {
-  if (!text || text.length < 30) return false;
-  if (/[^\u0000-\u024F\u1E00-\u1EFF]/.test(text.slice(0, 200))) return false;
-  return true;
+// Sonuçları arka planda cache'e yaz (kullanıcıyı beklettirmez)
+const cacheResults = (books) => {
+  books.slice(0, 10).forEach((b) => {
+    fetch("/api/cache-book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title:     b.title,
+        author:    b.author,
+        cover_url: b.cover,
+        ol_key:    b.olKey,
+        year:      String(b.year ?? ""),
+      }),
+    }).catch(() => {}); // sessizce ignore et
+  });
 };
 
-const fetchDescriptionFromOpenLibrary = async (title, author) => {
-  try {
-    const r = await fetchWithRetry(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(`${title} ${author}`)}&lang=eng&limit=5&fields=key,language`
-    );
-    const d = await r.json();
-    const docs = d.docs || [];
+export const searchBooks = async (q) => {
+  // Önce cache'e bak
+  const cached = await searchCache(q);
+  if (cached.length > 0) return cached;
 
-    const sorted = [...docs].sort((a, b) => {
-      const aEng = a.language?.includes("eng") ? -1 : 1;
-      const bEng = b.language?.includes("eng") ? -1 : 1;
-      return aEng - bEng;
-    });
+  // Cache'te yoksa OpenLibrary'e git
+  const results = await searchOpenLibrary(q);
 
-    for (const doc of sorted) {
-      try {
-        const r2 = await fetchWithRetry(`https://openlibrary.org${doc.key}.json`);
-        const d2 = await r2.json();
-        const raw = d2.description;
-        const text = typeof raw === "string" ? raw : raw?.value || null;
-        if (isEnglish(text)) return text;
-      } catch {}
-    }
-  } catch {}
-  return null;
-};
+  // Sonuçları arka planda kaydet, kullanıcıya hemen döndür
+  if (results.length > 0) cacheResults(results);
 
-// Every visitor to a book page used to trigger a fresh OpenLibrary lookup —
-// same book, same description, refetched over and over. This checks a
-// Supabase cache first (book_metadata.description) and only falls back to
-// OpenLibrary on a true cache miss, then writes the result back for next
-// time. Cache failures are non-fatal — worst case, behaves like before.
-export const fetchBookDescription = async (title, author) => {
-  let rowExists = false;
-
-  try {
-    const cacheRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(title)}&select=description`,
-      { headers: H }
-    );
-    const cacheRows = await cacheRes.json();
-    if (Array.isArray(cacheRows) && cacheRows.length > 0) {
-      rowExists = true;
-      if (cacheRows[0]?.description) return cacheRows[0].description;
-    }
-  } catch {
-    // Cache read failed — fall through to a live OpenLibrary fetch.
-  }
-
-  const desc = await fetchDescriptionFromOpenLibrary(title, author);
-
-  if (desc) {
-    try {
-      if (rowExists) {
-        await fetch(`${SUPABASE_URL}/rest/v1/book_metadata?book_title=eq.${encodeURIComponent(title)}`, {
-          method: "PATCH", headers: H,
-          body: JSON.stringify({ description: desc }),
-        });
-      } else {
-        await fetch(`${SUPABASE_URL}/rest/v1/book_metadata`, {
-          method: "POST", headers: H,
-          body: JSON.stringify({ book_title: title, description: desc }),
-        });
-      }
-    } catch {
-      // Caching is best-effort — a failed write just means we'll fetch
-      // from OpenLibrary again next time, same as before this change.
-    }
-  }
-
-  return desc;
+  return results;
 };
