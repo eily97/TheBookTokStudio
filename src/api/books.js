@@ -37,7 +37,11 @@ const searchCache = async (q) => {
     const rows = await r.json();
     if (!Array.isArray(rows)) return [];
 
-    return rows
+    const valid = rows.filter(row => row.author && row.author.trim() !== '');
+
+    if (valid.length === 0) return [];
+
+    return valid
       .map(toBook)
       .sort((a, b) => {
         const score = (book) => {
@@ -52,6 +56,8 @@ const searchCache = async (q) => {
       .slice(0, 15);
   } catch {
     return [];
+  }
+};
   }
 };
 
