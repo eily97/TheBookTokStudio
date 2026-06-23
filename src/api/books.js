@@ -1,4 +1,4 @@
-import { hasNonLatin, normalizeTitle, titlesAreSimilar } from "../utils";
+import { hasNonLatin } from "../utils";
 import { SUPABASE_URL, SB_HEADERS as H } from "../constants";
 
 const OL_FIELDS = "title,author_name,cover_i,key,first_publish_year,language";
@@ -25,7 +25,6 @@ const toBook = (b) => ({
   olKey:  b.key ?? b.ol_key ?? "",
 });
 
-// Supabase book_cache'te ara
 const searchCache = async (q) => {
   try {
     const lower = q.toLowerCase();
@@ -37,8 +36,7 @@ const searchCache = async (q) => {
     const rows = await r.json();
     if (!Array.isArray(rows)) return [];
 
-    const valid = rows.filter(row => row.author && row.author.trim() !== '');
-
+    const valid = rows.filter(row => row.author && row.author.trim() !== "");
     if (valid.length === 0) return [];
 
     return valid
@@ -58,10 +56,7 @@ const searchCache = async (q) => {
     return [];
   }
 };
-  }
-};
 
-// OpenLibrary'den ara
 const searchOpenLibrary = async (q) => {
   const [r1, r2] = await Promise.all([
     fetchWithRetry(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=20&fields=${OL_FIELDS}`),
@@ -77,7 +72,6 @@ const searchOpenLibrary = async (q) => {
     .map(toBook);
 };
 
-// Sonuçları arka planda cache'e yaz (kullanıcıyı beklettirmez)
 const cacheResults = (books) => {
   books.slice(0, 10).forEach((b) => {
     fetch("/api/cache-book", {
@@ -90,24 +84,20 @@ const cacheResults = (books) => {
         ol_key:    b.olKey,
         year:      String(b.year ?? ""),
       }),
-    }).catch(() => {}); // sessizce ignore et
+    }).catch(() => {});
   });
 };
 
 export const searchBooks = async (q) => {
-  // Önce cache'e bak
   const cached = await searchCache(q);
   if (cached.length > 0) return cached;
 
-  // Cache'te yoksa OpenLibrary'e git
   const results = await searchOpenLibrary(q);
-
-  // Sonuçları arka planda kaydet, kullanıcıya hemen döndür
   if (results.length > 0) cacheResults(results);
 
   return results;
 };
-// useBook.js tarafından kullanılır — kitap açıklamasını book_metadata'dan çeker
+
 export const fetchBookDescription = async (title) => {
   try {
     const r = await fetch(
@@ -121,4 +111,3 @@ export const fetchBookDescription = async (title) => {
     return null;
   }
 };
-
